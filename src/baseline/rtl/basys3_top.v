@@ -1,5 +1,7 @@
-module basys3_top //#(
-//)
+module basys3_top #(
+  // To disable instantiation of entire user core
+  parameter integer       USER_CORE_ENABLE    = 0
+)
 (
   /* 100MHz external clock */
   input   wire            clk_ext,
@@ -11,20 +13,17 @@ module basys3_top //#(
   input   wire  [4:0]     pushb_sw,
 
   /* PMOD interfaces */
-          wire  [7:0]     pmod_ja,
-          wire  [7:0]     pmod_jb,
-          wire  [7:0]     pmod_jc,
-          wire  [7:0]     pmod_jxadc,
+  inout   wire  [7:0]     pmod_ja,
+  inout   wire  [7:0]     pmod_jb,
+  inout   wire  [7:0]     pmod_jc,
+  inout   wire  [7:0]     pmod_jxadc,
 
   /* Flash SPI interface */
-  // output  wire            flash_sclk,
-  // The SCK flash input pin is driven by the configuration clock within the
-  // FPGA and is not directly accessible.
   output  wire            flash_mosi,
   input   wire            flash_miso,
   output  wire            flash_csn,
-  output   wire           flash_wpn,
-  output   wire           flash_hldn,
+  output  wire            flash_wpn,
+  output  wire            flash_hldn,
 
   /* VGA interface */
   output  wire  [3:0]     vga_red,
@@ -47,5 +46,14 @@ module basys3_top //#(
 
   /* USB RS-232 interface */
   output  wire            uart_txd,
-  input   wire            uart_rxd,
+  input   wire            uart_rxd
+);
+
+  generate
+    if (USER_CORE_ENABLE == 1) begin
+    end else begin
+    end
+  endgenerate
+
+endmodule
 
