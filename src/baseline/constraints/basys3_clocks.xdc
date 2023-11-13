@@ -5,5 +5,5 @@ create_clock \
   -name clk_ext \
   -period 10.00 \
   -waveform {0 5} \
-  [get_ports clk_ext]
+  [get_ports clk_ext_pad]
 

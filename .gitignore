@@ -60,3 +60,6 @@ dkms.conf
 # Editor related files
 .*.swp
 
+# Ignoring example projects for now
+examples/
+

@@ -1,0 +1,61 @@
+# Slider Switches
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[0] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[1] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[2] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[3] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[4] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[5] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[6] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[7] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[8] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[9] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[10]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[11]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[12]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[13]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[14]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sw[15]]
+# 
+# # Pushbutton Switches
+# set_property IOSTANDARD LVCMOS33 [get_ports btnc]
+# set_property IOSTANDARD LVCMOS33 [get_ports btnu]
+# set_property IOSTANDARD LVCMOS33 [get_ports btnl]
+# set_property IOSTANDARD LVCMOS33 [get_ports btnr]
+# set_property IOSTANDARD LVCMOS33 [get_ports btnd]
+# 
+# # LED
+# set_property IOSTANDARD LVCMOS33 [get_ports led[0] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[1] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[2] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[3] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[4] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[5] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[6] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[7] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[8] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[9] ]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[10]]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[11]]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[12]]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[13]]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[14]]
+# set_property IOSTANDARD LVCMOS33 [get_ports led[15]]
+# 
+# # Seven Segment Display Signals
+# # Discrete cathodes
+# set_property IOSTANDARD LVCMOS33 [get_ports sseg[0]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sseg[1]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sseg[2]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sseg[3]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sseg[4]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sseg[5]]
+# set_property IOSTANDARD LVCMOS33 [get_ports sseg[6]]
+# # Common anodes
+# set_property IOSTANDARD LVCMOS33 [get_ports an[0]]
+# set_property IOSTANDARD LVCMOS33 [get_ports an[1]]
+# set_property IOSTANDARD LVCMOS33 [get_ports an[2]]
+# set_property IOSTANDARD LVCMOS33 [get_ports an[3]]
+# # Decimal point
+# set_property IOSTANDARD LVCMOS33 [get_ports decimal]
+
+set_property IOSTANDARD LVCMOS33 [get_ports clk_ext_pad]
