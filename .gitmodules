@@ -1,3 +1,0 @@
-[submodule "externals/fpga-tools"]
-	path = externals/fpga-tools
-	url = git@personal:gmcastil/fpga-tools.git
