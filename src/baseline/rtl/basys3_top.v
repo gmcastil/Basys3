@@ -72,6 +72,7 @@ module basys3_top // #(
   //)
   user_core_i0 (
     .clk_ext        (clk_ext),
+    .rst_ext        (1'b0),
     .pmod_ja        (pmod_ja)
   );
 
