@@ -73,7 +73,13 @@ module basys3_top // #(
   user_core_i0 (
     .clk_ext        (clk_ext),
     .rst_ext        (1'b0),
-    .pmod_ja        (pmod_ja)
+    .pmod_ja        (pmod_ja),
+    .clk_mst        (),
+    .clk_en_cpu     (),
+    .clk_en_ppu     (),
+    .rst_mst        (),
+    .rst_en_cpu     (),
+    .rst_en_ppu     ()
   );
 
 endmodule

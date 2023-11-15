@@ -1,5 +1,7 @@
-`define   GND   1'b0
-`define   VCC   1'b1
+`define GND             1'b0
+`define VCC             1'b1
+
+`define ILA_NES_CLKS    1
 
 `timescale 1ps / 1ps
 
@@ -12,10 +14,14 @@ module user_core //#(
 
   output  wire          clk_mst,
   output  wire          clk_en_ppu,
-  output  wire          clk_en_cpu
+  output  wire          clk_en_cpu,
+
+  output  wire          rst_mst,
+  output  wire          rst_en_ppu,
+  output  wire          rst_en_cpu
 );
 
-  localparam  CPU_CLK_DIV     = 12
+  localparam  CPU_CLK_DIV     = 12;
   localparam  PPU_CLK_DIV     = 5;
 
   // We desire to create a CPU and PPU clock that are each derived from the
@@ -64,13 +70,33 @@ module user_core //#(
 //
 
   wire    clk_236m25;
-  wire    clk_21m48;
   wire    mmcm_locked;
-  
-  assign pmod_ja[0]   = clk_en_cpu;
-  assign pmod_ja[1]   = clk_en_ppu;
+
+  assign clk_en_cpu   = clk_en_cpu_q;
+  assign clk_en_ppu   = clk_en_ppu_q;
+  assign rst_en_cpu   = 1'b0;
+  assign rst_en_ppu   = 1'b0;
+
+  /* Debugging signals */
+  assign pmod_ja[0]   = clk_en_cpu_q;
+  assign pmod_ja[1]   = clk_en_ppu_q;
   assign pmod_ja[2]   = mmcm_locked;
   assign pmod_ja[7:3] = 5'b0;
+
+  // Will add a (TYPE) flip flop stage after the shift register instance to ease
+  // timing efforts
+  reg             clk_en_cpu_q;
+  reg             clk_en_ppu_q;
+
+  // Signals for hooking up the two shift registers to the output clock from the
+  // MMCM
+  wire            srl_ppu_feedback;
+  wire            srl_cpu_feedback;
+  wire  [4:0]     srl_ppu_depth;
+  wire  [4:0]     srl_cpu_depth;
+
+  // nasty do not do this
+  assign rst_mst = mmcm_locked;
 
   MMCME2_ADV #(
     .BANDWIDTH              ("OPTIMIZED"),
@@ -102,7 +128,7 @@ module user_core //#(
     .CLKFBOUTB              (),
     .CLKOUT0                (clk_236m25),
     .CLKOUT0B               (),
-    .CLKOUT1                (clk_21m48),
+    .CLKOUT1                (clk_mst),
     .CLKOUT1B               (),
     .CLKOUT2                (),
     .CLKOUT2B               (),
@@ -132,12 +158,6 @@ module user_core //#(
     .RST                    (rst_ext)
   );
 
-  wire            srl_ppu_feedback;
-  wire  [4:0]     srl_ppu_depth;
-
-  wire            srl_cpu_feedback;
-  wire  [4:0]     srl_cpu_depth;
-
   assign srl_cpu_depth = CPU_CLK_DIV - 1;
   assign srl_ppu_depth = PPU_CLK_DIV - 1;
 
@@ -149,7 +169,7 @@ module user_core //#(
     .Q                  (srl_cpu_feedback),
     .Q31                (),
     .A                  (srl_cpu_depth),
-    .CE                 (rst_mst)
+    .CE                 (rst_mst),
     .CLK                (clk_mst),
     .D                  (srl_cpu_feedback)
   );
@@ -170,8 +190,35 @@ module user_core //#(
   // Adding an extra registration stage to the output is done to improve
   // clock-to-out timing.
   always @(posedge clk_mst) begin
-    clk_en_cpu        <= srl_cpu_feedback;
-    clk_en_ppu        <= srl_ppu_feedback;
+    clk_en_cpu_q      <= srl_cpu_feedback;
+    clk_en_ppu_q      <= srl_ppu_feedback;
   end
+
+  generate
+    if (`ILA_NES_CLKS == 1) begin
+      ila_nes_clks //#(
+      //)
+      ila_nes_clks_i0 (
+        // The master clock should be running
+        .clk          (clk_mst),
+        // MMCM should lock very quickly
+        .probe0       (mmcm_locked),
+        .probe1       (1'b0),
+        // PPU clock is a divide by 5
+        .probe2       (clk_en_ppu),
+        // CPU clock is a divide by 12
+        .probe3       (clk_en_cpu),
+        // Master reset derived from the MMCM locked
+        .probe4       (rst_mst),
+        // Reset synchronous to the PPU enable signal
+        .probe5       (rst_en_ppu),
+        // Reset synchronous to the CPU enable signal
+        .probe6       (rst_en_cpu),
+        // Output of SRL for the PPU and CPU enable signal generations
+        .probe7       (srl_ppu_feedback),
+        .probe8       (srl_cpu_feedback)
+      );
+    end
+  endgenerate /* synthesis syn_keep=1 syn_preserve=1 syn_noprune=1 */;
 
 endmodule

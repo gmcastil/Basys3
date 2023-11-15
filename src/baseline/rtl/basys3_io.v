@@ -8,6 +8,7 @@ module basys3_io //#(
   input   wire          clk_ext_pad
 );
 
+  wire      clk_ext_bufg;
 
   // Per UG471, IBUF and IBUFG primitives are the same.  Here we instantiate the
   // IBUF and the BUFG explicitly to make sure that the external clock is
