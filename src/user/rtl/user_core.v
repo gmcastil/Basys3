@@ -5,8 +5,14 @@
 
 `timescale 1ps / 1ps
 
-module user_core //#(
-//)
+module user_core #(
+  // Number of `clk_mst` ticks before `rst_mst` is deasserted
+  parameter   MASTER_RST_LENGTH     = 10,
+  // Number of `clk_en_ppu` ticks before `rst_en_ppu` is deasserted
+  parameter   RST_EN_PPU_LENGTH        = 4,
+  // Number of `clk_en_cpu` ticks before `rst_en_cpu` is deasserted
+  parameter   RST_EN_CPU_LENGTH        = 4
+)
 (
   input   wire          clk_ext,
   input   wire          rst_ext,
@@ -72,8 +78,22 @@ module user_core //#(
   wire    clk_236m25;
   wire    mmcm_locked;
 
+  // Signals for hooking up the two shift registers to the output clock from the
+  // MMCM
+  wire            srl_ppu_feedback;
+  wire            srl_cpu_feedback;
+  wire  [4:0]     srl_ppu_depth;
+  wire  [4:0]     srl_cpu_depth;
+
+  // Signals for wiring together the chains of FDPE used to create master reset
+  // and the reset signals synchronous to the CPU and PPU clock enable signals.
+  wire  [MASTER_RST_LENGTH:0]     rst_mst_chain;
+  wire  [RST_PPU_LENGTH:0]        rst_en_ppu_chain;
+  wire  [CPU_RST_LENGTH:0]        rst_en_cpu_chain;
+
   assign clk_en_cpu   = clk_en_cpu_q;
   assign clk_en_ppu   = clk_en_ppu_q;
+  assign rst_mst      =
   assign rst_en_cpu   = 1'b0;
   assign rst_en_ppu   = 1'b0;
 
@@ -83,20 +103,9 @@ module user_core //#(
   assign pmod_ja[2]   = mmcm_locked;
   assign pmod_ja[7:3] = 5'b0;
 
-  // Will add a (TYPE) flip flop stage after the shift register instance to ease
-  // timing efforts
-  reg             clk_en_cpu_q;
-  reg             clk_en_ppu_q;
-
-  // Signals for hooking up the two shift registers to the output clock from the
-  // MMCM
-  wire            srl_ppu_feedback;
-  wire            srl_cpu_feedback;
-  wire  [4:0]     srl_ppu_depth;
-  wire  [4:0]     srl_cpu_depth;
-
-  // nasty do not do this
-  assign rst_mst = mmcm_locked;
+  /* these should be values, not signals or wires */
+  assign srl_cpu_depth = CPU_CLK_DIV - 1;
+  assign srl_ppu_depth = PPU_CLK_DIV - 1;
 
   MMCME2_ADV #(
     .BANDWIDTH              ("OPTIMIZED"),
@@ -121,8 +130,8 @@ module user_core //#(
     // Input clocks and clock select
     .CLKFBIN                (clk_fb),
     .CLKIN1                 (clk_ext),
-    .CLKIN2                 (1'b0),
-    .CLKINSEL               (1'b1),
+    .CLKIN2                 (`GND),
+    .CLKINSEL               (`VDD),
     // Feedback and output clocks
     .CLKFBOUT               (clk_fb),
     .CLKFBOUTB              (),
@@ -158,8 +167,31 @@ module user_core //#(
     .RST                    (rst_ext)
   );
 
-  assign srl_cpu_depth = CPU_CLK_DIV - 1;
-  assign srl_ppu_depth = PPU_CLK_DIV - 1;
+  // Synthesize the reset signal for the master clock domain from the MMCM
+  // locked indicator
+  // Of the chain of FDPE elements, the index of 0 is the D input to the
+  // flip flop closest to the MMCM and the MASTER_RST_LENGTH index is the
+  // Q output of the last flip flop in the chain.  Hence, in the synthesized
+  // design, there should be MASTER_RST_LENGTH - 1 elements in the reset
+  // chain.
+
+  genvar i;
+  generate
+    assign  rst_mst_chain[0]      = `GND;
+    assign  rst_mst               = rst_mst_chain[MASTER_RST_LENGTH];
+    for (i = 0; i < MASTER_RST_LENGTH; i = i + 1) begin
+      FDPE #(
+        .INIT     (1'b1)
+      )
+      FDPE_mst_rst_i (
+        .Q        (rst_mst_chain[i+1]),
+        .C        (clk_mst),
+        .CE       (`VCC),
+        .PRE      (mmcm_locked),
+        .D        (rst_mst_chain[i])
+      );
+    end
+  endgenerate
 
   SRLC32E #(
     .IS_CLK_INVERTED    (0),
@@ -174,6 +206,25 @@ module user_core //#(
     .D                  (srl_cpu_feedback)
   );
 
+  genvar i;
+  generate
+    for (i = 0; i < RST_EN_PPU_LENGTH; i = i + 1) begin
+      FDPE #(
+        .INIT     (1'b1)
+      )
+      FDPE_mst_rst_i (
+        .Q        (rst_en_ppu_chain[i+1]),
+        .C        (clk_mst),
+        .CE       (clk_en_ppu),
+        .PRE      (rst_mst),
+        .D        (rst_en_ppu_chain[i])
+      );
+    end
+  endgenerate
+
+  assign  rst_en_ppu_chain[0]   = `GND;
+  assign  rst_en_ppu            = rst_en_ppu_chain[RST_EN_PPU_LENGTH];
+
   SRLC32E #(
     .IS_CLK_INVERTED    (0),
     .INIT               (32'h0000_0001)  
@@ -186,13 +237,6 @@ module user_core //#(
     .CLK                (clk_mst),
     .D                  (srl_ppu_feedback)
   );
-  
-  // Adding an extra registration stage to the output is done to improve
-  // clock-to-out timing.
-  always @(posedge clk_mst) begin
-    clk_en_cpu_q      <= srl_cpu_feedback;
-    clk_en_ppu_q      <= srl_ppu_feedback;
-  end
 
   generate
     if (`ILA_NES_CLKS == 1) begin
