@@ -7,11 +7,11 @@
 
 module user_core #(
   // Number of `clk_mst` ticks before `rst_mst` is deasserted
-  parameter   MASTER_RST_LENGTH     = 10,
+  parameter   RST_MST_LENGTH        = 10,
   // Number of `clk_en_ppu` ticks before `rst_en_ppu` is deasserted
-  parameter   RST_EN_PPU_LENGTH        = 4,
+  parameter   RST_EN_PPU_LENGTH     = 4,
   // Number of `clk_en_cpu` ticks before `rst_en_cpu` is deasserted
-  parameter   RST_EN_CPU_LENGTH        = 4
+  parameter   RST_EN_CPU_LENGTH     = 4
 )
 (
   input   wire          clk_ext,
@@ -93,15 +93,18 @@ module user_core #(
 
   assign clk_en_cpu   = clk_en_cpu_q;
   assign clk_en_ppu   = clk_en_ppu_q;
-  assign rst_mst      =
-  assign rst_en_cpu   = 1'b0;
+  assign rst_mst      = rst_
+  assign rst_en_cpu   =
   assign rst_en_ppu   = 1'b0;
 
   /* Debugging signals */
-  assign pmod_ja[0]   = clk_en_cpu_q;
-  assign pmod_ja[1]   = clk_en_ppu_q;
-  assign pmod_ja[2]   = mmcm_locked;
-  assign pmod_ja[7:3] = 5'b0;
+  assign pmod_ja[0]   = clk_en_ppu;
+  assign pmod_ja[1]   = clk_en_cpu;
+  assign pmod_ja[2]   = clk_mst;
+  assign pmod_ja[3]   = rst_en_ppu;
+  assign pmod_ja[4]   = rst_en_cpu;
+  assign pmod_ja[5]   = rst_mst;
+  assign pmod_ja[7:6] = 2'b0;
 
   /* these should be values, not signals or wires */
   assign srl_cpu_depth = CPU_CLK_DIV - 1;
@@ -167,32 +170,9 @@ module user_core #(
     .RST                    (rst_ext)
   );
 
-  // Synthesize the reset signal for the master clock domain from the MMCM
-  // locked indicator
-  // Of the chain of FDPE elements, the index of 0 is the D input to the
-  // flip flop closest to the MMCM and the MASTER_RST_LENGTH index is the
-  // Q output of the last flip flop in the chain.  Hence, in the synthesized
-  // design, there should be MASTER_RST_LENGTH - 1 elements in the reset
-  // chain.
-
-  genvar i;
-  generate
-    assign  rst_mst_chain[0]      = `GND;
-    assign  rst_mst               = rst_mst_chain[MASTER_RST_LENGTH];
-    for (i = 0; i < MASTER_RST_LENGTH; i = i + 1) begin
-      FDPE #(
-        .INIT     (1'b1)
-      )
-      FDPE_mst_rst_i (
-        .Q        (rst_mst_chain[i+1]),
-        .C        (clk_mst),
-        .CE       (`VCC),
-        .PRE      (mmcm_locked),
-        .D        (rst_mst_chain[i])
-      );
-    end
-  endgenerate
-
+  // Shift registers to generate the CPU and PPU clock enable signals. Note that
+  // these are all on the same `clk_mst` domain (indeed, the entire module is on
+  // the same clock domain).
   SRLC32E #(
     .IS_CLK_INVERTED    (0),
     .INIT               (32'h0000_0001)  
@@ -205,25 +185,6 @@ module user_core #(
     .CLK                (clk_mst),
     .D                  (srl_cpu_feedback)
   );
-
-  genvar i;
-  generate
-    for (i = 0; i < RST_EN_PPU_LENGTH; i = i + 1) begin
-      FDPE #(
-        .INIT     (1'b1)
-      )
-      FDPE_mst_rst_i (
-        .Q        (rst_en_ppu_chain[i+1]),
-        .C        (clk_mst),
-        .CE       (clk_en_ppu),
-        .PRE      (rst_mst),
-        .D        (rst_en_ppu_chain[i])
-      );
-    end
-  endgenerate
-
-  assign  rst_en_ppu_chain[0]   = `GND;
-  assign  rst_en_ppu            = rst_en_ppu_chain[RST_EN_PPU_LENGTH];
 
   SRLC32E #(
     .IS_CLK_INVERTED    (0),
@@ -238,6 +199,62 @@ module user_core #(
     .D                  (srl_ppu_feedback)
   );
 
+  // The D inputs to the first in each chain of FDPE is a 0
+  assign rst_mst_chain[0]       = `GND;
+  assign rst_en_ppu_chain[0]    = `GND;
+  assign rst_en_cpu_chain[0]    = `GND;
+  // And the Q output of the last in each of FDPE is wired out
+  assign rst_mst                = rst_mst_chain[RST_MST_LENGTH];
+  assign rst_en_ppu             = rst_en_ppu_chain[RST_EN_PPU_LENGTH];
+  assign rst_en_cpu             = rst_en_cpu_chain[RST_EN_CPU_LENGTH];
+
+  // Synthesize the reset signal for the master clock domain from the MMCM
+  // locked indicator
+  genvar i;
+  generate
+    // FDPE chain for `rst_mst`
+    for (i = 0; i < MASTER_RST_LENGTH; i = i + 1) begin
+      FDPE #(
+        .INIT     (1'b1)
+      )
+      FDPE_rst_mst_i (
+        .Q        (rst_mst_chain[i+1]),
+        .C        (clk_mst),
+        .CE       (`VCC),
+        .PRE      (mmcm_locked),
+        .D        (rst_mst_chain[i])
+      );
+    end
+
+    // FDPE chain for `rst_en_ppu`
+    for (i = 0; i < RST_EN_PPU_LENGTH; i = i + 1) begin
+      FDPE #(
+        .INIT     (1'b1)
+      )
+      FDPE_rst_en_ppu_i (
+        .Q        (rst_en_ppu_chain[i+1]),
+        .C        (clk_mst),
+        .CE       (clk_en_ppu),
+        .PRE      (rst_mst),
+        .D        (rst_en_ppu_chain[i])
+      );
+    end
+
+    // FDPE chain for `rst_en_ppu`
+    for (i = 0; i < RST_EN_PPU_LENGTH; i = i + 1) begin
+      FDPE #(
+        .INIT     (1'b1)
+      )
+      FDPE_rst_en_cpu_i (
+        .Q        (rst_en_cpu_chain[i+1]),
+        .C        (clk_mst),
+        .CE       (clk_en_cpu),
+        .PRE      (rst_mst),
+        .D        (rst_en_cpu_chain[i])
+      );
+    end
+  endgenerate
+
   generate
     if (`ILA_NES_CLKS == 1) begin
       ila_nes_clks //#(
@@ -247,7 +264,7 @@ module user_core #(
         .clk          (clk_mst),
         // MMCM should lock very quickly
         .probe0       (mmcm_locked),
-        .probe1       (1'b0),
+        .probe1       (),
         // PPU clock is a divide by 5
         .probe2       (clk_en_ppu),
         // CPU clock is a divide by 12
