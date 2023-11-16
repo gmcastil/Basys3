@@ -87,15 +87,9 @@ module user_core #(
 
   // Signals for wiring together the chains of FDPE used to create master reset
   // and the reset signals synchronous to the CPU and PPU clock enable signals.
-  wire  [MASTER_RST_LENGTH:0]     rst_mst_chain;
-  wire  [RST_PPU_LENGTH:0]        rst_en_ppu_chain;
-  wire  [CPU_RST_LENGTH:0]        rst_en_cpu_chain;
-
-  assign clk_en_cpu   = clk_en_cpu_q;
-  assign clk_en_ppu   = clk_en_ppu_q;
-  assign rst_mst      = rst_
-  assign rst_en_cpu   =
-  assign rst_en_ppu   = 1'b0;
+  wire  [RST_MST_LENGTH:0]      rst_mst_chain;
+  wire  [RST_EN_PPU_LENGTH:0]   rst_en_ppu_chain;
+  wire  [RST_EN_CPU_LENGTH:0]   rst_en_cpu_chain;
 
   /* Debugging signals */
   assign pmod_ja[0]   = clk_en_ppu;
@@ -134,7 +128,7 @@ module user_core #(
     .CLKFBIN                (clk_fb),
     .CLKIN1                 (clk_ext),
     .CLKIN2                 (`GND),
-    .CLKINSEL               (`VDD),
+    .CLKINSEL               (`VCC),
     // Feedback and output clocks
     .CLKFBOUT               (clk_fb),
     .CLKFBOUTB              (),
@@ -199,6 +193,9 @@ module user_core #(
     .D                  (srl_ppu_feedback)
   );
 
+  assign clk_en_ppu             = srl_ppu_feedback;
+  assign clk_en_cpu             = srl_cpu_feedback;
+
   // The D inputs to the first in each chain of FDPE is a 0
   assign rst_mst_chain[0]       = `GND;
   assign rst_en_ppu_chain[0]    = `GND;
@@ -213,7 +210,7 @@ module user_core #(
   genvar i;
   generate
     // FDPE chain for `rst_mst`
-    for (i = 0; i < MASTER_RST_LENGTH; i = i + 1) begin
+    for (i = 0; i < RST_MST_LENGTH; i = i + 1) begin
       FDPE #(
         .INIT     (1'b1)
       )
@@ -241,7 +238,7 @@ module user_core #(
     end
 
     // FDPE chain for `rst_en_ppu`
-    for (i = 0; i < RST_EN_PPU_LENGTH; i = i + 1) begin
+    for (i = 0; i < RST_EN_CPU_LENGTH; i = i + 1) begin
       FDPE #(
         .INIT     (1'b1)
       )
@@ -264,7 +261,7 @@ module user_core #(
         .clk          (clk_mst),
         // MMCM should lock very quickly
         .probe0       (mmcm_locked),
-        .probe1       (),
+        .probe1       (1'b0),
         // PPU clock is a divide by 5
         .probe2       (clk_en_ppu),
         // CPU clock is a divide by 12
@@ -278,8 +275,8 @@ module user_core #(
         // Output of SRL for the PPU and CPU enable signal generations
         .probe7       (srl_ppu_feedback),
         .probe8       (srl_cpu_feedback)
-      );
+      ) /* synthesis syn_keep=1 syn_preserve=1 syn_noprune=1 */;
     end
-  endgenerate /* synthesis syn_keep=1 syn_preserve=1 syn_noprune=1 */;
+  endgenerate
 
 endmodule
