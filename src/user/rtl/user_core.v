@@ -6,22 +6,33 @@
 `timescale 1ps / 1ps
 
 module user_core #(
+  parameter INPUT_CLK_IBUF        = "DISABLED",
+  // Number of `clk_ref` ticks before `rst_ref` is deasserted
+  parameter RST_REF_LENGTH        = 10,
   // Number of `clk_mst` ticks before `rst_mst` is deasserted
-  parameter   RST_MST_LENGTH        = 10,
+  parameter RST_MST_LENGTH        = 10,
   // Number of `clk_en_ppu` ticks before `rst_en_ppu` is deasserted
-  parameter   RST_EN_PPU_LENGTH     = 4,
+  parameter RST_EN_PPU_LENGTH     = 4,
   // Number of `clk_en_cpu` ticks before `rst_en_cpu` is deasserted
-  parameter   RST_EN_CPU_LENGTH     = 4
+  parameter RST_EN_CPU_LENGTH     = 4
 )
 (
+  // This should come from an external 100MHz oscillator or fabric clock. No
+  // BUFG is necessary, as the external source is wired in directly. If an IBUF
+  // is desired on the input clock, one can be enabled, in which case the
+  // external oscillator will be connected directly to the PLL.
   input   wire          clk_ext,
   input   wire          rst_ext,
   inout   wire  [7:0]   pmod_ja,
 
+  // Output clock and clock enables
+  output  wire          clk_ref,
   output  wire          clk_mst,
   output  wire          clk_en_ppu,
   output  wire          clk_en_cpu,
 
+  // Output resets
+  output  wire          rst_ref,
   output  wire          rst_mst,
   output  wire          rst_en_ppu,
   output  wire          rst_en_cpu
@@ -75,7 +86,10 @@ module user_core #(
 // __primary_________100.000____________0.010
 //
 
+  // MMCM inputs and outputs
+  wire    clk_100m00;
   wire    clk_236m25;
+  wire    clk_21m477;
   wire    mmcm_locked;
 
   // Signals for hooking up the two shift registers to the output clock from the
@@ -87,22 +101,31 @@ module user_core #(
 
   // Signals for wiring together the chains of FDPE used to create master reset
   // and the reset signals synchronous to the CPU and PPU clock enable signals.
+  wire  [RST_REF_LENGTH:0]      rst_ref_chain;
   wire  [RST_MST_LENGTH:0]      rst_mst_chain;
   wire  [RST_EN_PPU_LENGTH:0]   rst_en_ppu_chain;
   wire  [RST_EN_CPU_LENGTH:0]   rst_en_cpu_chain;
 
-  /* Debugging signals */
-  assign pmod_ja[0]   = clk_en_ppu;
-  assign pmod_ja[1]   = clk_en_cpu;
-  assign pmod_ja[2]   = clk_mst;
-  assign pmod_ja[3]   = rst_en_ppu;
-  assign pmod_ja[4]   = rst_en_cpu;
-  assign pmod_ja[5]   = rst_mst;
-  assign pmod_ja[7:6] = 2'b0;
+  assign pmod_ja[7:0] = 8'b0;
 
   /* these should be values, not signals or wires */
   assign srl_cpu_depth = CPU_CLK_DIV - 1;
   assign srl_ppu_depth = PPU_CLK_DIV - 1;
+
+  // Insert an IBUF on the input clock line if it is requested, otherwise it is
+  // the users responsibility to create it or infer it
+  generate
+    if (INPUT_CLK_IBUF == "ENABLED") begin
+      IBUF //#(
+      //)
+      IBUF_clk_ext (
+        .I              (clk_ext),
+        .O              (clk_100m00)
+      );
+    end else begin
+      assign clk_100m00 = clk_ext;
+    end
+  endgenerate
 
   MMCME2_ADV #(
     .BANDWIDTH              ("OPTIMIZED"),
@@ -126,7 +149,7 @@ module user_core #(
   MMCME2_ADV_i0 (
     // Input clocks and clock select
     .CLKFBIN                (clk_fb),
-    .CLKIN1                 (clk_ext),
+    .CLKIN1                 (clk_100m00),
     .CLKIN2                 (`GND),
     .CLKINSEL               (`VCC),
     // Feedback and output clocks
@@ -134,7 +157,7 @@ module user_core #(
     .CLKFBOUTB              (),
     .CLKOUT0                (clk_236m25),
     .CLKOUT0B               (),
-    .CLKOUT1                (clk_mst),
+    .CLKOUT1                (clk_21m477),
     .CLKOUT1B               (),
     .CLKOUT2                (),
     .CLKOUT2B               (),
@@ -162,6 +185,21 @@ module user_core #(
     .CLKFBSTOPPED           (),
     .PWRDWN                 (`GND),
     .RST                    (rst_ext)
+  );
+
+  // Insert BUFG prior to any clock or reset signal distribution
+  BUFG //#(
+  //)
+  BUFG_clk_ref (
+    .I                  (clk_236m25),
+    .O                  (clk_ref)
+  );
+
+  BUFG //#(
+  //)
+  BUFG_clk_mst (
+    .I                  (clk_21m477),
+    .O                  (clk_mst)
   );
 
   // Shift registers to generate the CPU and PPU clock enable signals. Note that
@@ -197,10 +235,12 @@ module user_core #(
   assign clk_en_cpu             = srl_cpu_feedback;
 
   // The D inputs to the first in each chain of FDPE is a 0
-  assign rst_mst_chain[0]       = `GND;
-  assign rst_en_ppu_chain[0]    = `GND;
-  assign rst_en_cpu_chain[0]    = `GND;
+  assign rst_ref_chain[0]       = `VCC;
+  assign rst_mst_chain[0]       = `VCC;
+  assign rst_en_ppu_chain[0]    = `VCC;
+  assign rst_en_cpu_chain[0]    = `VCC;
   // And the Q output of the last in each of FDPE is wired out
+  assign rst_ref                = rst_ref_chain[RST_REF_LENGTH];
   assign rst_mst                = rst_mst_chain[RST_MST_LENGTH];
   assign rst_en_ppu             = rst_en_ppu_chain[RST_EN_PPU_LENGTH];
   assign rst_en_cpu             = rst_en_cpu_chain[RST_EN_CPU_LENGTH];
@@ -209,44 +249,58 @@ module user_core #(
   // locked indicator
   genvar i;
   generate
-    // FDPE chain for `rst_mst`
-    for (i = 0; i < RST_MST_LENGTH; i = i + 1) begin
-      FDPE #(
-        .INIT     (1'b1)
+    // FDCE chain for `rst_ref`
+    for (i = 0; i < RST_REF_LENGTH; i = i + 1) begin
+      FDCE #(
+        .INIT     (1'b0)
       )
-      FDPE_rst_mst_i (
+      FDCE_rst_mst_i (
+        .Q        (rst_ref_chain[i+1]),
+        .C        (clk_ref),
+        .CE       (`VCC),
+        .CLR      (~mmcm_locked),
+        .D        (rst_ref_chain[i])
+      );
+    end
+
+    // FDCE chain for `rst_mst`
+    for (i = 0; i < RST_MST_LENGTH; i = i + 1) begin
+      FDCE #(
+        .INIT     (1'b0)
+      )
+      FDCE_rst_mst_i (
         .Q        (rst_mst_chain[i+1]),
         .C        (clk_mst),
         .CE       (`VCC),
-        .PRE      (mmcm_locked),
+        .CLR      (~rst_ref),
         .D        (rst_mst_chain[i])
       );
     end
 
-    // FDPE chain for `rst_en_ppu`
+    // FDCE chain for `rst_en_ppu`
     for (i = 0; i < RST_EN_PPU_LENGTH; i = i + 1) begin
-      FDPE #(
-        .INIT     (1'b1)
+      FDCE #(
+        .INIT     (1'b0)
       )
-      FDPE_rst_en_ppu_i (
+      FDCE_rst_en_ppu_i (
         .Q        (rst_en_ppu_chain[i+1]),
         .C        (clk_mst),
         .CE       (clk_en_ppu),
-        .PRE      (rst_mst),
+        .CLR      (~rst_mst),
         .D        (rst_en_ppu_chain[i])
       );
     end
 
-    // FDPE chain for `rst_en_ppu`
+    // FDCE chain for `rst_en_ppu`
     for (i = 0; i < RST_EN_CPU_LENGTH; i = i + 1) begin
-      FDPE #(
-        .INIT     (1'b1)
+      FDCE #(
+        .INIT     (1'b0)
       )
-      FDPE_rst_en_cpu_i (
+      FDCE_rst_en_cpu_i (
         .Q        (rst_en_cpu_chain[i+1]),
         .C        (clk_mst),
         .CE       (clk_en_cpu),
-        .PRE      (rst_mst),
+        .CLR      (~rst_mst),
         .D        (rst_en_cpu_chain[i])
       );
     end
