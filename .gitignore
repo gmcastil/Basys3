@@ -63,3 +63,5 @@ dkms.conf
 # Ignoring example projects for now
 examples/
 
+# Vivado projects will all go in here for now
+proj/
