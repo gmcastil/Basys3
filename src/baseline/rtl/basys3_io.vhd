@@ -40,11 +40,16 @@ architecture structural of basys3_io is
 
 begin
 
-    -- The external clock signal is treated specially and does not include an
-    -- IBUF or BUFG instance in the IO ring.  All clock buffering is performed
-    -- in the clock and reset module. For consistency in naming, we simply pass
-    -- it through this module.
-    clk_ext         <= clk_ext_pad;
+    -- All additional clock generation is performed in the clock and reset module
+    IBUF_clk_ext: IBUF
+    generic map (
+        IBUF_LOW_PWR    => TRUE,
+        IOSTANDARD      => "DEFAULT"
+    )
+    port map (
+        I               => clk_ext_pad,
+        O               => clk_ext
+    );
 
     -- Push button and slider switches need to be debounced at some point after
     -- the IO ring.

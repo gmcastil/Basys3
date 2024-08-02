@@ -65,3 +65,7 @@ examples/
 
 # Vivado projects will all go in here for now
 proj/
+.Xil
+.vivado_pid*
+work-obj*
+

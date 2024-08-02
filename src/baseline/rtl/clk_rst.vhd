@@ -6,8 +6,6 @@ use UNISIM.vcomponents.all;
 
 entity clk_rst is
     generic (
-        -- If desired, an IBUF can be inserted on the input clock
-        ADD_CLK_IBUF        : boolean       := false;
         -- How many clocks to assert reset
         RST_LENGTH          : natural       := 10
     );
@@ -27,7 +25,7 @@ end entity clk_rst;
 
 architecture structural of clk_rst is
 
-    signal rst_100m00_chain     : std_logic_vector(RST_LENGTH downto 0);
+    signal rst_100m00_chain     : std_logic_vector((RST_LENGTH - 1) downto 0);
 
 begin
 
@@ -38,36 +36,25 @@ begin
     -- adds an MMCM, the IBUFG should not be inserted between the clock input
     -- pin and the IBUF (or at least, almost certainly not, unless there is
     -- logic that requires the clock prior to the MMCM).
-    g_clk_ext: if ADD_CLK_IBUF generate
-        IBUF_clk_ext: IBUF
-        generic map (
-            IBUF_LOW_PWR    => TRUE,
-            IOSTANDARD      => "DEFAULT"
-        )
-        port map (
-            I               => clk_ext,
-            O               => clk_100m00
-        );
-    else generate
-        clk_100m00          <= clk_ext;
-    end generate g_clk_ext;
+    clk_100m00      <= clk_ext;
 
     -- Create a power on reset for the 100MHz domain
-    g_rst_100m00: for i in 0 to (RST_LENGTH - 1) generate
+    rst_100m00_chain(0)     <= '0';
+    rst_100m00              <= rst_100m00_chain(RST_LENGTH - 1);
+
+    g_rst_100m00: for i in 1 to (rst_100m00_chain'length - 1) generate
+    begin
         FDPE_i: FDPE
         generic map (
             INIT    => '1'
         )
         port map (
-            Q       => rst_100m00_chain(i + 1),
+            Q       => rst_100m00_chain(i),
             C       => clk_100m00,
             CE      => '1',
-            PRE     => not rst_ext,
-            D       => rst_100m00_chain(i)
+            PRE     => rst_ext,
+            D       => rst_100m00_chain(i - 1)
         );
     end generate g_rst_100m00;
-
-    rst_100m00_chain(0)     <= '0';
-    rst_100m00              <= rst_100m00_chain(RST_LENGTH);
 
 end architecture structural;

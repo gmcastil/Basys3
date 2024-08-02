@@ -93,38 +93,57 @@ begin
     -- Clock and reset generator
     clk_rst_i0: entity work.clk_rst
     generic map (
-        ADD_CLK_IBUF        => true,
         RST_LENGTH          => 10
     )
     port map (
-        clk_ext             => clk_ext_pad,
+        clk_ext             => clk_ext,
         rst_ext             => pushb_sw(0),
 
         clk_100m00          => clk_100m00,
         rst_100m00          => rst_100m00
     );
 
+    led(0)  <= uart_txd;
+
     -- UART core
-    uart_i0: entity work.uart
-    generic map (
-        CLK_FREQ            => 100000000,
-        BAUD_RATE           => 115200
-    )
-    port map (
-		clk			        => clk_100m00,
-		rst			        => rst_100m00,
+   g_uart_i0: if (1 = 1) generate
+   begin
+     uart_i0: entity work.uart
+     generic map (
+         CLK_FREQ            => 100000000,
+         BAUD_RATE           => 115200
+     )
+     port map (
+         clk			    => clk_100m00,
+         rst			    => rst_100m00,
 
-		uart_rd_data		=> uart_rd_data,
-		uart_rd_valid		=> uart_rd_valid,
-		uart_rd_ready		=> uart_rd_ready,
+         uart_rd_data		=> uart_rd_data,
+         uart_rd_valid		=> uart_rd_valid,
+         uart_rd_ready		=> uart_rd_ready,
 
-		uart_wr_data		=> uart_wr_data,
-		uart_wr_valid		=> uart_wr_valid,
-		uart_wr_ready		=> uart_wr_ready,
+         uart_wr_data		=> uart_wr_data,
+         uart_wr_valid		=> uart_wr_valid,
+         uart_wr_ready		=> uart_wr_ready,
 
-		uart_rxd			=> uart_rxd,
-		uart_txd			=> uart_txd
-    );
+         uart_rxd			=> uart_rxd,
+         uart_txd			=> uart_txd
+     );
+   else generate
+       uart_rd_data        <= (others=>'0');
+       uart_rd_valid       <= '0';
+       uart_wr_ready       <= '0';
+
+       uart_txd            <= '1';
+   end generate g_uart_i0;
+
+    -- For now, LEDs can just be driven ad hoc - later, some should be reserved for
+    -- baseline use, and others for the user core. And I have no idea what the SSEG
+    -- will look like later. A general purpose module would be nice.
+    led(15 downto 1)        <= (others=>'0');
+
+    sseg_digit              <= (others=>'0');
+    sseg_dp                 <= '0';
+    sseg_selectn            <= (others=>'1');
 
     -- User core
     user_core_i0: entity work.user_core
@@ -140,11 +159,11 @@ begin
 		uart_wr_valid		=> uart_wr_valid,
 		uart_wr_ready		=> uart_wr_ready,
 
-        sseg_digit          => sseg_digit,
-        sseg_dp             => sseg_dp,
-        sseg_selectn        => sseg_selectn,
+        sseg_digit          => open,
+        sseg_dp             => open,
+        sseg_selectn        => open,
 
-        heartbeat           => led(0)
+        heartbeat           => open
     );
 
 end architecture structural;
