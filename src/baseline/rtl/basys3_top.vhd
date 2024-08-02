@@ -29,20 +29,32 @@ end entity basys3_top;
         
 architecture structural of basys3_top is
 
+    -- Clocks and reset
     signal clk_ext              : std_logic;
     signal rst_ext              : std_logic;
 
+    signal clk_100m00           : std_logic;
+    signal rst_100m00           : std_logic;
+
+    -- Bells and whistles
     signal slider_sw            : std_logic_vector(15 downto 0);
     signal pushb_sw             : std_logic_vector(4 downto 0);
     signal led                  : std_logic_vector(15 downto 0);
+
+    -- Seven segment display
     signal sseg_digit           : std_logic_vector(6 downto 0);
     signal sseg_dp              : std_logic;
     signal sseg_selectn         : std_logic_vector(3 downto 0);
+
+    -- UART 
+    signal uart_rd_data         : std_logic_vector(7 downto 0);
+    signal uart_rd_valid        : std_logic;
+    signal uart_rd_ready        : std_logic;
+    signal uart_wr_data         : std_logic_vector(7 downto 0);
+    signal uart_wr_valid        : std_logic;
+    signal uart_wr_ready        : std_logic;
     signal uart_rxd             : std_logic;
     signal uart_txd             : std_logic;
-
-    signal clk_100m00           : std_logic;
-    signal rst_100m00           : std_logic;
 
 begin
 
@@ -92,17 +104,41 @@ begin
         rst_100m00          => rst_100m00
     );
 
-    -- User core include:
-    --   UART core
-    --   Heartbeat LED
-    --   SSEG display
+    -- UART core
+    uart_i0: entity work.uart
+    generic map (
+        CLK_FREQ            => 100000000,
+        BAUD_RATE           => 115200
+    )
+    port map (
+		clk			        => clk_100m00,
+		rst			        => rst_100m00,
+
+		uart_rd_data		=> uart_rd_data,
+		uart_rd_valid		=> uart_rd_valid,
+		uart_rd_ready		=> uart_rd_ready,
+
+		uart_wr_data		=> uart_wr_data,
+		uart_wr_valid		=> uart_wr_valid,
+		uart_wr_ready		=> uart_wr_ready,
+
+		uart_rxd			=> uart_rxd,
+		uart_txd			=> uart_txd
+    );
+
+    -- User core
     user_core_i0: entity work.user_core
     port map (
         clk                 => clk_100m00,
         rst                 => rst_100m00,
 
-        uart_rxd            => uart_rxd,
-        uart_txd            => uart_txd,
+		uart_rd_data		=> uart_rd_data,
+		uart_rd_valid		=> uart_rd_valid,
+		uart_rd_ready		=> uart_rd_ready,
+
+		uart_wr_data		=> uart_wr_data,
+		uart_wr_valid		=> uart_wr_valid,
+		uart_wr_ready		=> uart_wr_ready,
 
         sseg_digit          => sseg_digit,
         sseg_dp             => sseg_dp,
