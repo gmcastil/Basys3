@@ -17,9 +17,28 @@ end entity baud_rate_gen;
 
 architecture behavioral of baud_rate_gen is
 
+    constant BAUD_DIVISOR   : integer   CLK_FREQ / BAUD_RATE;
+
+    signal  tick_cnt        : integer;
+
 begin
 
-    baud_tick       <= '0';
+    process(clk)
+        if rising_edge(clk) then
+            if (rst = '1') then
+                baud_tick       <= '0';
+                tick_cnt        <= (others=>'0');
+            else
+                if ( tick_cnt = (BAUD_DIVISOR srl 1) ) then
+                    baud_tick       <= not baud_tick;
+                    tick_cnt        <= (others=>'0');
+                else
+                    baud_tick       <= baud_tick;
+                    tick_cnt        <= tick_cnt + 1;
+                end if;
+            end if;
+        end if;
+    end process;
 
 end architecture behavioral;
 
