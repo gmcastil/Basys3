@@ -144,7 +144,7 @@ begin
         sseg_dp             => sseg_dp,
         sseg_selectn        => sseg_selectn,
 
-        heartbeat           => open
+        heartbeat           => led(0)
     );
 
 end architecture structural;

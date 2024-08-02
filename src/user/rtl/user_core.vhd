@@ -26,5 +26,7 @@ architecture structural of user_core is
 
 begin
 
+    heartbeat       <= '1';
+
 end architecture structural;
 
