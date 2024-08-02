@@ -29,47 +29,6 @@ end entity basys3_top;
         
 architecture structural of basys3_top is
 
-    component basys3_io is
-        port (
-            clk_ext_pad         : in    std_logic;
-            clk_ext             : out   std_logic;
-
-            slider_sw_pad       : in    std_logic_vector(15 downto 0);
-            slider_sw           : out   std_logic_vector(15 downto 0);
-
-            pushb_sw_pad        : in    std_logic_vector(4 downto 0);
-            pushb_sw            : out   std_logic_vector(4 downto 0);
-
-            led_pad             : out   std_logic_vector(15 downto 0);
-            led                 : in    std_logic_vector(15 downto 0);
-        
-            sseg_digit_pad      : out   std_logic_vector(6 downto 0);
-            sseg_digit          : in    std_logic_vector(6 downto 0);
-
-            sseg_dp_pad         : out   std_logic;
-            sseg_dp             : in    std_logic;
-
-            sseg_selectn_pad    : out   std_logic_vector(3 downto 0);
-            sseg_selectn        : in    std_logic_vector(3 downto 0);
-
-            uart_rxd_pad        : in    std_logic;
-            uart_rxd            : out   std_logic;
-
-            uart_txd_pad        : out   std_logic;
-            uart_txd            : in    std_logic
-        );
-    end component basys3_io;
-
-    component clk_rst is
-        port (
-            clk_ext             : in    std_logic;
-            rst_ext             : in    std_logic;
-
-            clk_100m00          : out   std_logic;
-            rst_100m00          : out   std_logic
-        );
-    end component clk_rst;
-
     signal clk_ext              : std_logic;
     signal rst_ext              : std_logic;
 
@@ -88,10 +47,11 @@ architecture structural of basys3_top is
 begin
 
     -- IO ring
-    basys3_io_i0: basys3_io
+    basys3_io_i0: entity work.basys3_io
     port map (
-		clk_ext_pad			=> clk_ext_pad,
-		clk_ext		    	=> clk_ext,
+
+        clk_ext_pad         => clk_ext_pad,
+        clk_ext             => clk_ext,
 
 		slider_sw_pad		=> slider_sw_pad,
 		slider_sw			=> slider_sw,
@@ -119,10 +79,14 @@ begin
     );
 
     -- Clock and reset generator
-    clk_rst_i0: clk_rst
+    clk_rst_i0: entity work.clk_rst
+    generic map (
+        ADD_CLK_IBUF        => true,
+        RST_LENGTH          => 10
+    )
     port map (
-        clk_ext             => clk_ext,
-        rst_ext             => rst_ext,
+        clk_ext             => clk_ext_pad,
+        rst_ext             => pushb_sw(0),
 
         clk_100m00          => clk_100m00,
         rst_100m00          => rst_100m00
