@@ -26,7 +26,12 @@ architecture structural of user_core is
 
 begin
 
-    heartbeat       <= '1';
+    uart_wr_valid       <= '1';
+    uart_wr_data        <= (others=>'1');
+
+    uart_rd_ready       <= '1';
+
+    heartbeat           <= '1';
 
 end architecture structural;
 

@@ -50,8 +50,6 @@ architecture structural of uart is
 
 begin
 
-    uart_txd    <= baud_tick;
-
     baud_rate_gen_i0: entity work.baud_rate_gen
     generic map (
         CLK_FREQ        => CLK_FREQ,
@@ -88,7 +86,7 @@ begin
         uart_wr_valid   => uart_wr_valid,
         uart_wr_ready   => uart_wr_ready,
 
-        uart_txd        => open
+        uart_txd        => uart_txd
     );
 
 end architecture structural;

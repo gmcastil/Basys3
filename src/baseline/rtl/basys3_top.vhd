@@ -103,43 +103,32 @@ begin
         rst_100m00          => rst_100m00
     );
 
-    led(0)  <= uart_txd;
-
     -- UART core
-   g_uart_i0: if (1 = 1) generate
-   begin
-     uart_i0: entity work.uart
-     generic map (
-         CLK_FREQ            => 100000000,
-         BAUD_RATE           => 115200
-     )
-     port map (
-         clk			    => clk_100m00,
-         rst			    => rst_100m00,
+    uart_i0: entity work.uart
+    generic map (
+        CLK_FREQ            => 100000000,
+        BAUD_RATE           => 115200
+    )
+    port map (
+        clk			        => clk_100m00,
+        rst			        => rst_100m00,
 
-         uart_rd_data		=> uart_rd_data,
-         uart_rd_valid		=> uart_rd_valid,
-         uart_rd_ready		=> uart_rd_ready,
+        uart_rd_data		=> uart_rd_data,
+        uart_rd_valid		=> uart_rd_valid,
+        uart_rd_ready		=> uart_rd_ready,
 
-         uart_wr_data		=> uart_wr_data,
-         uart_wr_valid		=> uart_wr_valid,
-         uart_wr_ready		=> uart_wr_ready,
+        uart_wr_data		=> uart_wr_data,
+        uart_wr_valid		=> uart_wr_valid,
+        uart_wr_ready		=> uart_wr_ready,
 
-         uart_rxd			=> uart_rxd,
-         uart_txd			=> uart_txd
-     );
-   else generate
-       uart_rd_data        <= (others=>'0');
-       uart_rd_valid       <= '0';
-       uart_wr_ready       <= '0';
-
-       uart_txd            <= '1';
-   end generate g_uart_i0;
+        uart_rxd			=> uart_rxd,
+        uart_txd			=> uart_txd
+    );
 
     -- For now, LEDs can just be driven ad hoc - later, some should be reserved for
     -- baseline use, and others for the user core. And I have no idea what the SSEG
     -- will look like later. A general purpose module would be nice.
-    led(15 downto 1)        <= (others=>'0');
+    led(15 downto 0)        <= (others=>'0');
 
     sseg_digit              <= (others=>'0');
     sseg_dp                 <= '0';
