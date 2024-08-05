@@ -20,7 +20,11 @@ entity basys3_top is
         sseg_dp_pad         : out   std_logic;
         sseg_selectn_pad    : out   std_logic_vector(3 downto 0);
 
-        -- FTDI FT2232HQ USB-to-UART bridge
+        -- FTDI FT2232HQ USB-to-UART bridge.  Two onboard status LED provide
+        -- visual feedback on UART traffic: the transmit LED (LD18) and the
+        -- receive LED (LD17). Signal names on the board are from perspective
+        -- of the data terminal equipment (e.g., a PC). These are in addition
+        -- to the user LEDs and are not connected to fabric logic.
         uart_rxd_pad        : in    std_logic;
         uart_txd_pad        : out   std_logic
     );
