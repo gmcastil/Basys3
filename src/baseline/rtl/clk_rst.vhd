@@ -1,9 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-library UNISIM;
-use UNISIM.vcomponents.all;
-
 entity clk_rst is
     generic (
         -- How many clocks to assert reset
@@ -25,7 +22,8 @@ end entity clk_rst;
 
 architecture structural of clk_rst is
 
-    signal rst_100m00_chain     : std_logic_vector((RST_LENGTH - 1) downto 0);
+    -- Reset chain gets initialized to all 1
+    signal rst_100m00_chain     : std_logic_vector((RST_LENGTH - 1) downto 0) := (others=>'1');
 
 begin
 
@@ -38,23 +36,22 @@ begin
     -- logic that requires the clock prior to the MMCM).
     clk_100m00      <= clk_ext;
 
-    -- Create a power on reset for the 100MHz domain
-    rst_100m00_chain(0)     <= '0';
-    rst_100m00              <= rst_100m00_chain(RST_LENGTH - 1);
+    -- Set the initial reset signal to 0 at the right end of the chain
+    rst_100m00_chain(0)         <= '0';
+    -- And output the leftmost value as the reset signal for the 100MHz clock domain
+    rst_100m00                  <= rst_100m00_chain(RST_LENGTH - 1);
 
-    g_rst_100m00: for i in 1 to (rst_100m00_chain'length - 1) generate
+    -- This synthesizes to a chain of RST_LENGTH - 1 FDPE initialized to 1
+    process(clk_100m00, rst_ext)
     begin
-        FDPE_i: FDPE
-        generic map (
-            INIT    => '1'
-        )
-        port map (
-            Q       => rst_100m00_chain(i),
-            C       => clk_100m00,
-            CE      => '1',
-            PRE     => rst_ext,
-            D       => rst_100m00_chain(i - 1)
-        );
-    end generate g_rst_100m00;
+        if (rst_ext = '1') then
+            -- Asynchronus reset, so set the entire chain to 1
+            rst_100m00_chain((RST_LENGTH - 1) downto 1) <= (others=>'1');
+        else
+            if rising_edge(clk_100m00) then
+                rst_100m00_chain((RST_LENGTH - 1) downto 1) <= rst_100m00_chain((RST_LENGTH - 2) downto 0);
+            end if;
+        end if;
+    end process;
 
 end architecture structural;
