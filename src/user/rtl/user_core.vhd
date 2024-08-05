@@ -27,7 +27,7 @@ architecture structural of user_core is
 begin
 
     uart_wr_valid       <= '1';
-    uart_wr_data        <= (others=>'1');
+    uart_wr_data        <= x"48";
 
     uart_rd_ready       <= '1';
 
