@@ -62,12 +62,14 @@ begin
     );
 
     uart_rx_i0: entity work.uart_rx
+    generic map (
+        CLK_FREQ        => CLK_FREQ,
+        BAUD_RATE       => BAUD_RATE
+    )
     port map (
         clk             => clk,
         rst             => rst,
     
-        baud_tick       => baud_tick,
-        
         uart_rd_data    => uart_rd_data,
         uart_rd_valid   => uart_rd_valid,
         uart_rd_ready   => uart_rd_ready,
