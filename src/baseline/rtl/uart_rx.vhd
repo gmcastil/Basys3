@@ -60,12 +60,6 @@ begin
     process(clk)
     begin
         if rising_edge(clk) then
-            if (rx_done = '1') then
-                uart_rxd        <= rx_data_sr;
-
-    process(clk)
-    begin
-        if rising_edge(clk) then
             if (rst = '1') then
                 found_start         <= '0';
 
@@ -76,12 +70,12 @@ begin
                 -- Looking for the start bit
                 if (found_start = '0') then
                     if (uart_rxd_qqq = '1' and uart_rxd_qq = '0') then
-                        tick_cnt        <= (others=>'0');
-                        found_start     <= '1';
-                        rx_bit_cnt      <= rx_bit_cnt + 1;
+                        tick_cnt            <= (others=>'0');
+                        found_start         <= '1';
+                        rx_bit_cnt          <= rx_bit_cnt + 1;
                         -- Load whatever was captured as the start bit into the bottom
                         -- of the shift register
-                        rx_data_sr(0)   <= uart_rxd_qqq;
+                        rx_data_sr(0)       <= uart_rxd_qqq;
                     end if;
                 -- Sampling data bits
                 elsif (rx_bit_cnt <= (RX_FRAME_LEN - 2) then
