@@ -1,0 +1,7 @@
+#!/bin/bash
+
+vlog -work work -sv clk_rst_tb_top.v
+vcom -work work -2008 ../../src/baseline/rtl/clk_rst.vhd
+
+vsim work.clk_rst_tb_top
+
