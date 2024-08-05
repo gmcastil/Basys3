@@ -69,29 +69,29 @@ begin
         clk_ext_pad         => clk_ext_pad,
         clk_ext             => clk_ext,
 
-		slider_sw_pad		=> slider_sw_pad,
-		slider_sw			=> slider_sw,
+        slider_sw_pad       => slider_sw_pad,
+        slider_sw           => slider_sw,
 
-		pushb_sw_pad		=> pushb_sw_pad,
-		pushb_sw			=> pushb_sw,
+        pushb_sw_pad        => pushb_sw_pad,
+        pushb_sw            => pushb_sw,
 
-		led_pad		    	=> led_pad,
-		led		        	=> led,
+        led_pad             => led_pad,
+        led                 => led,
     
-		sseg_digit_pad		=> sseg_digit_pad,
-		sseg_digit			=> sseg_digit,
+        sseg_digit_pad      => sseg_digit_pad,
+        sseg_digit          => sseg_digit,
 
-		sseg_dp_pad			=> sseg_dp_pad,
-		sseg_dp		    	=> sseg_dp,
+        sseg_dp_pad         => sseg_dp_pad,
+        sseg_dp             => sseg_dp,
 
-		sseg_selectn_pad	=> sseg_selectn_pad,
-		sseg_selectn		=> sseg_selectn,
+        sseg_selectn_pad    => sseg_selectn_pad,
+        sseg_selectn        => sseg_selectn,
 
-		uart_rxd_pad		=> uart_rxd_pad,
-		uart_rxd		    => uart_rxd,
+        uart_rxd_pad        => uart_rxd_pad,
+        uart_rxd            => uart_rxd,
 
-		uart_txd_pad		=> uart_txd_pad,
-		uart_txd		    => uart_txd
+        uart_txd_pad        => uart_txd_pad,
+        uart_txd            => uart_txd
     );
 
     -- Clock and reset generator
@@ -114,19 +114,19 @@ begin
         BAUD_RATE           => 115200
     )
     port map (
-        clk			        => clk_100m00,
-        rst			        => rst_100m00,
+        clk                 => clk_100m00,
+        rst                 => rst_100m00,
 
-        uart_rd_data		=> uart_rd_data,
-        uart_rd_valid		=> uart_rd_valid,
-        uart_rd_ready		=> uart_rd_ready,
+        uart_rd_data        => uart_rd_data,
+        uart_rd_valid       => uart_rd_valid,
+        uart_rd_ready       => uart_rd_ready,
 
-        uart_wr_data		=> uart_wr_data,
-        uart_wr_valid		=> uart_wr_valid,
-        uart_wr_ready		=> uart_wr_ready,
+        uart_wr_data        => uart_wr_data,
+        uart_wr_valid       => uart_wr_valid,
+        uart_wr_ready       => uart_wr_ready,
 
-        uart_rxd			=> uart_rxd,
-        uart_txd			=> uart_txd
+        uart_rxd            => uart_rxd,
+        uart_txd            => uart_txd
     );
 
     -- For now, LEDs can just be driven ad hoc - later, some should be reserved for
@@ -144,13 +144,13 @@ begin
         clk                 => clk_100m00,
         rst                 => rst_100m00,
 
-		uart_rd_data		=> uart_rd_data,
-		uart_rd_valid		=> uart_rd_valid,
-		uart_rd_ready		=> uart_rd_ready,
+        uart_rd_data        => uart_rd_data,
+        uart_rd_valid       => uart_rd_valid,
+        uart_rd_ready       => uart_rd_ready,
 
-		uart_wr_data		=> uart_wr_data,
-		uart_wr_valid		=> uart_wr_valid,
-		uart_wr_ready		=> uart_wr_ready,
+        uart_wr_data        => uart_wr_data,
+        uart_wr_valid       => uart_wr_valid,
+        uart_wr_ready       => uart_wr_ready,
 
         sseg_digit          => open,
         sseg_dp             => open,
