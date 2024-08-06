@@ -3,6 +3,6 @@ proj/
 # Simulation output products
 /sim/*/work
 .Xil
-.vivado_pid*
+vivado_pid*.str
 work-obj*
 
