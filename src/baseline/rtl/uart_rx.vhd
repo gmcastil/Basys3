@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity uart_rx is
     generic (
@@ -16,7 +17,8 @@ entity uart_rx is
         uart_rd_valid   : out   std_logic;
         uart_rd_ready   : in    std_logic;
 
-        uart_rxd        : in    std_logic
+        uart_rxd        : in    std_logic;
+        uart_rx_debug   : out   std_logic_vector(31 downto 0)
     );
 
 end entity uart_rx;
@@ -29,6 +31,8 @@ architecture behavioral of uart_rx is
     constant RX_START_BIT           : std_logic := '0';
     constant RX_STOP_BIT            : std_logic := '1';
 
+    constant BAUD_DIVISOR   : integer   := CLK_FREQ / BAUD_RATE;
+
     -- Asynchronous serial input needs a couple of flip flops to synchronize
     -- to this domain
     signal  uart_rxd_q              : std_logic;
@@ -37,8 +41,14 @@ architecture behavioral of uart_rx is
 
     -- Clock the data into this register for now
     signal  rx_data_sr              : std_logic_vector((RX_FRAME_LEN - 1) downto 0);
+    signal  rx_bit_cnt              : unsigned(3 downto 0);
+    signal  tick_cnt                : unsigned(15 downto 0);
+
+    signal  found_start             : std_logic;
 
 begin
+
+    uart_rx_debug           <= (others=>'0');
 
     -- First, need to cross the input serial data stream into the native clock
     -- domain for this module
@@ -78,7 +88,7 @@ begin
                         rx_data_sr(0)       <= uart_rxd_qqq;
                     end if;
                 -- Sampling data bits
-                elsif (rx_bit_cnt <= (RX_FRAME_LEN - 2) then
+                elsif ( rx_bit_cnt <= (RX_FRAME_LEN - 2) ) then
                     if ( tick_cnt = (to_unsigned(BAUD_DIVISOR, rx_bit_cnt'length) srl 1) ) then
                         tick_cnt            <= (others=>'0');
                         rx_bit_cnt          <= rx_bit_cnt + 1;
@@ -111,7 +121,7 @@ begin
                 end if;
             end if;
         end if;
-    end process
+    end process;
 
 end architecture behavioral;
 
