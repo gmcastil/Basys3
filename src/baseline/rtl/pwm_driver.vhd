@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 entity pwm_driver is
     generic (
         -- Number of bits for the duty cycle or resolution
-        PWM_RESOLUTION      : integer   8
+        PWM_RESOLUTION      : integer   := 8
     );
     port (
         clk                 : in    std_logic;
@@ -18,11 +18,13 @@ entity pwm_driver is
 
 end entity pwm_driver;
 
+architecture behavioral of pwm_driver is
+
     -- Initialize this counter to zero with no reset necessary
     --signal  pwm_cnt         : unsigned((PWM_RESOLUTION - 1) downto 0) := (others=>'0');
     signal  pwm_cnt         : unsigned((PWM_RESOLUTION - 1) downto 0);
 
-architecture behavioral of pwm_driver is
+begin
 
     process(clk)
     begin
@@ -41,7 +43,7 @@ architecture behavioral of pwm_driver is
                 else
                     pwm_drive       <= '0';
                 end if;
-            end if
+            end if;
         end if;
     end process;
 
