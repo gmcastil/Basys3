@@ -1,8 +1,11 @@
 # Vivado projects will all go in here for now
 proj/
+
 # Simulation output products
 /sim/*/work
+work-obj*
+
+# Random Xilinx detritus
 .Xil
 vivado_pid*.str
-work-obj*
 
