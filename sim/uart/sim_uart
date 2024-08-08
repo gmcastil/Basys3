@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Import common functions
+if ! source "../common/common.sh" >/dev/null 2>&1; then
+    printf '%s\n' "Error: Could not import common functions" >&2
+    exit 1
+fi
+
+if ! check_modelsim; then
+    err "Could not find ModelSim tools in current PATH"
+    exit 1
+fi
+
+rtl_dir="../../src/rtl"
+tb_dir="./"
+
+work="work"
+
+# Remove existing ModelSim work library
+if [[ -f "${work}/_info" ]]; then
+    rm -vrf "${work}"
+fi
+
+vlib "${work}"
+vmap work "${work}"
+
+vlog -work "${work}" -sv "${tb_dir}/uart_tb_top.sv"
+
+vcom -work "${work}" -2008 "${rtl_dir}/baseline/baud_rate_gen.vhd"
+vcom -work "${work}" -2008 "${rtl_dir}/baseline/uart_rx.vhd"
+vcom -work "${work}" -2008 "${rtl_dir}/baseline/uart_tx.vhd"
+vcom -work "${work}" -2008 "${rtl_dir}/baseline/uart.vhd"
+
