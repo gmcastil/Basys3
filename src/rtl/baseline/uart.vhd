@@ -84,7 +84,6 @@ begin
     port map (
         clk             => clk,
         rst             => rst,
-
         baud_tick       => baud_tick,
 
         uart_wr_data    => uart_wr_data,

@@ -14,7 +14,7 @@ entity basys3_top is
 
         -- User LED
         led_pad             : out   std_logic_vector(15 downto 0);
-        
+
         -- Seven-segment (SSEG) display
         sseg_digit_pad      : out   std_logic_vector(6 downto 0);
         sseg_dp_pad         : out   std_logic;
@@ -39,6 +39,9 @@ architecture structural of basys3_top is
 
     signal clk_100m00           : std_logic;
     signal rst_100m00           : std_logic;
+
+    signal sys_clk              : std_logic_vector(5 downto 0);
+    signal sys_rst              : std_logic_vector(5 downto 0);
 
     -- Bells and whistles
     signal slider_sw            : std_logic_vector(15 downto 0);
@@ -98,15 +101,21 @@ begin
     -- Clock and reset generator
     clk_rst_i0: entity work.clk_rst
     generic map (
-        RST_LENGTH          => 10
+        RST_LENGTH          => 10,
+        NUM_CLOCKS          => 6
     )
     port map (
         clk_ext             => clk_ext,
         rst_ext             => pushb_sw(0),
 
-        clk_100m00          => clk_100m00,
-        rst_100m00          => rst_100m00
+        sys_clk             => sys_clk,
+        sys_rst             => sys_rst
     );
+
+    -- Not every module in the baseline top level design needs or should have every clock and reset
+    -- routed to it (this inhibits reuse), so break them out individually here.
+    clk_100m00          <= sys_clk(0);
+    rst_100m00          <= sys_rst(0);
 
     -- UART core
     uart_i0: entity work.uart
@@ -142,8 +151,8 @@ begin
     -- User core
     user_core_i0: entity work.user_core
     port map (
-        clk                 => clk_100m00,
-        rst                 => rst_100m00,
+        sys_clk             => sys_clk,
+        sys_rst             => sys_rst,
 
         uart_rd_data        => uart_rd_data,
         uart_rd_valid       => uart_rd_valid,

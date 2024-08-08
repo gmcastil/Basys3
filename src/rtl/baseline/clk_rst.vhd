@@ -4,7 +4,8 @@ use ieee.std_logic_1164.all;
 entity clk_rst is
     generic (
         -- How many clocks to assert reset
-        RST_LENGTH          : natural       := 10
+        RST_LENGTH          : natural       := 10;
+        NUM_CLOCKS          : integer       := 6
     );
     port (
         -- External clock, possibly from an oscillator
@@ -13,19 +14,30 @@ entity clk_rst is
         -- that needs debouncing
         rst_ext             : in    std_logic;
 
-        -- 100Mhz output clock and synchronous reset
-        clk_100m00          : out   std_logic;
-        rst_100m00          : out   std_logic
+        sys_clk             : out   std_logic_vector((NUM_CLOCKS - 1) downto 0);
+        sys_rst             : out   std_logic_vector((NUM_CLOCKS - 1) downto 0)
     );
 
 end entity clk_rst;
 
 architecture structural of clk_rst is
 
+
+    -- 100Mhz output clock and synchronous reset
+    signal clk_100m00           : std_logic;
+    signal rst_100m00           : std_logic;
+
     -- Reset chain gets initialized to all 1
     signal rst_100m00_chain     : std_logic_vector((RST_LENGTH - 1) downto 0) := (others=>'1');
 
 begin
+
+    -- System clock and reset buses
+    sys_clk(0)      <= clk_100m00;
+    sys_rst(0)      <= rst_100m00;
+
+    sys_clk((NUM_CLOCKS - 1) downto 1)  <= (others=>'0');
+    sys_rst((NUM_CLOCKS - 1) downto 1)  <= (others=>'0');
 
     -- No need for clocking resources yet, so we just create the 100Mhz from the
     -- input clock. Note that this will still instantiate an IBUFG between the

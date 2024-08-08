@@ -3,8 +3,8 @@ use ieee.std_logic_1164.all;
 
 entity user_core is
     port (
-        clk                 : in    std_logic;
-        rst                 : in    std_logic;
+        sys_clk             : in    std_logic_vector(5 downto 0);
+        sys_rst             : in    std_logic_vector(5 downto 0);
 
         uart_rd_data        : in    std_logic_vector(7 downto 0);
         uart_rd_valid       : in    std_logic;
@@ -38,8 +38,8 @@ begin
         PWM_RESOLUTION      => 8
     )
     port map (
-        clk                 => clk,
-        rst                 => rst,
+        clk                 => sys_clk(0),
+        rst                 => sys_rst(0),
         duty_cycle          => x"FF",
         pwm_drive           => user_led(0)
     );
