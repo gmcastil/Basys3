@@ -85,7 +85,10 @@ begin
                         rx_bit_cnt          <= rx_bit_cnt + 1;
                         -- Load whatever was captured as the start bit into the bottom
                         -- of the shift register
-                        rx_data_sr(0)       <= uart_rxd_qqq;
+                        if (uart_rxd_qqq = RX_START_BIT) then
+                            rx_data_sr(0)       <= uart_rxd_qqq;
+                            -- this should always be a 0 since we fired this on the falling edge
+                        end if;
                     end if;
                 -- Sampling data bits
                 elsif ( rx_bit_cnt <= (RX_FRAME_LEN - 2) ) then
@@ -108,6 +111,13 @@ begin
 
                         -- Capture the last bit we received
                         rx_data_sr(0)       <= uart_rxd_qqq;
+    --                        if (uart_rxd_qqq = RX_STOP_BIT) then
+                            -- basically need to handle the fact that we found the stop bit,
+                            -- all the other bits in between the start and here
+                            -- Then the qeustion becomes how to handle the fact that we've found
+                            -- all the bits in the transmitted word, but the receiver might not be
+                            -- ready yet.... i like the idea of a busy.  But, the right way to
+                            -- handle this is eventually FIFOing somewhere:
                         rx_data_sr((RX_FRAME_LEN - 1) downto 1)
                                             <= rx_data_sr(RX_FRAME_LEN - 2 downto 0);
 

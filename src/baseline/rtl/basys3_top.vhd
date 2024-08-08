@@ -112,7 +112,7 @@ begin
     generic map (
         CLK_FREQ            => 100000000,
         BAUD_RATE           => 115200,
-        UART_DEBUG          => true
+        UART_DEBUG          => false
     )
     port map (
         clk                 => clk_100m00,
@@ -130,11 +130,11 @@ begin
         uart_txd            => uart_txd
     );
 
-    -- For now, LEDs can just be driven ad hoc - later, some should be reserved for
-    -- baseline use, and others for the user core. And I have no idea what the SSEG
-    -- will look like later. A general purpose module would be nice.
-    led(15 downto 0)        <= (others=>'0');
+    -- For now, all the LEDs will be routed to the user core
+    user_led                <= led;
 
+    -- And for now, we'll drive the SSEG from user core as well, but eventually,
+    -- some easier interface would make sense
     sseg_digit              <= (others=>'0');
     sseg_dp                 <= '0';
     sseg_selectn            <= (others=>'1');
@@ -157,7 +157,7 @@ begin
         sseg_dp             => open,
         sseg_selectn        => open,
 
-        heartbeat           => open
+        user_led            => user_led
     );
 
 end architecture structural;
