@@ -6,9 +6,7 @@ entity uart is
         -- Input clock frequency
         CLK_FREQ    : integer       := 100000000;
         -- Desired baud rate
-        BAUD_RATE   : integer       := 115200;
-        -- Instantiate an ILA for debugging purposes
-        UART_DEBUG  : boolean       := false
+        BAUD_RATE   : integer       := 115200
     );
     port (
         clk                 : in    std_logic;
@@ -79,8 +77,7 @@ begin
         uart_rd_valid   => uart_rd_valid,
         uart_rd_ready   => uart_rd_ready,
 
-        uart_rxd        => uart_rxd,
-        uart_rx_debug   => uart_rx_debug
+        uart_rxd        => uart_rxd
     );
 
     uart_tx_i0: entity work.uart_tx
@@ -94,29 +91,8 @@ begin
         uart_wr_valid   => uart_wr_valid,
         uart_wr_ready   => uart_wr_ready,
 
-        uart_txd        => uart_txd,
-        uart_tx_debug   => uart_tx_debug
+        uart_txd        => uart_txd
     );
-
-    g_uart_debug: if (UART_DEBUG = true) generate
-    begin
-
-        uart_ila_i0: entity work.uart_ila
-        port map (
-            clk             => clk,
-            probe0(0)       => rst,
-            probe1          => uart_rd_data,
-            probe2(0)       => uart_rd_valid,
-            probe3(0)       => uart_rd_ready,
-            probe4          => uart_wr_data,
-            probe5(0)       => uart_wr_valid,
-            probe6(0)       => uart_wr_ready,
-            probe7(0)       => uart_rxd,
-            probe8(0)       => uart_txd,
-            probe9          => uart_rx_debug,
-            probe10         => uart_tx_debug
-        );
-    end generate g_uart_debug;
 
 end architecture structural;
 

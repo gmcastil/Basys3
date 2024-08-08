@@ -44,6 +44,7 @@ architecture structural of basys3_top is
     signal slider_sw            : std_logic_vector(15 downto 0);
     signal pushb_sw             : std_logic_vector(4 downto 0);
     signal led                  : std_logic_vector(15 downto 0);
+    signal user_led             : std_logic_vector(15 downto 0);
 
     -- Seven segment display
     signal sseg_digit           : std_logic_vector(6 downto 0);
@@ -111,8 +112,7 @@ begin
     uart_i0: entity work.uart
     generic map (
         CLK_FREQ            => 100000000,
-        BAUD_RATE           => 115200,
-        UART_DEBUG          => false
+        BAUD_RATE           => 115200
     )
     port map (
         clk                 => clk_100m00,

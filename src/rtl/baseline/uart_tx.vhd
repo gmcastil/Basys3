@@ -6,7 +6,7 @@ entity uart_tx is
     port (
         clk             : in    std_logic;
         rst             : in    std_logic;
-        
+
         baud_tick       : in    std_logic;
 
         uart_wr_data    : in    std_logic_vector(7 downto 0);
@@ -14,8 +14,7 @@ entity uart_tx is
         uart_wr_ready   : out   std_logic;
 
         -- This needs some modification so that it powers up to a 1 prior to reset
-        uart_txd        : out   std_logic   := '1';
-        uart_tx_debug   : out   std_logic_vector(31 downto 0)
+        uart_txd        : out   std_logic   := '1'
     );
 
 end entity uart_tx;
@@ -47,8 +46,6 @@ architecture behavioral of uart_tx is
 begin
 
     uart_txd        <= tx_data_sr(0);
-
-    uart_tx_debug   <= (others=>'0');
 
     -- Need a rising edge detector for the signal from the baud rate generator
     process(clk)
