@@ -4,6 +4,8 @@ proj/
 # Simulation output products
 /sim/*/work
 work-obj*
+/sim/*/vsim.wlf
+/sim/*/transcript
 
 # Random Xilinx detritus
 .Xil
