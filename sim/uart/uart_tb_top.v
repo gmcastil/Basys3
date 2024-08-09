@@ -25,6 +25,8 @@ module uart_tb_top ();
   assign uart_clk = sys_clk[0];
   assign uart_rst = sys_rst[0];
 
+  string str = "Hello, world";
+
   // Establish the 100MHz external oscillator provided by the board
   initial begin
     clk_ext = 1'b0;
@@ -39,17 +41,17 @@ module uart_tb_top ();
     // on reset is dasserted
     uart_idle();
 
+    // Wait until reset is deasserted
+    @(negedge uart_rst);
     // UART stimulus can start several clocks after reset is deasserted
-    wait(uart_rst == 1'b0);
     repeat (10) @(posedge uart_clk);
 
-    // Now we can start sending data
-    uart_write_byte(8'h48);
-    uart_write_byte(8'h47);
+    // Now we can send data
+    for (int i=0; i<str.len(); i++) begin
+      uart_write_byte(str.getc(i));
+    end
 
-    // Let the simulation run until the UART is ready for more data
-//    repeat (100) @(posedge uart_clk);
-    wait(uart_wr_ready);
+    wait(uart_wr_ready == 1'b1);
     $display("UART simulation complete");
     $finish;
   end
@@ -99,11 +101,19 @@ module uart_tb_top ();
   task automatic uart_write_byte(
     input   logic   [7:0]   wr_data
   );
-    uart_wr_data    = wr_data;
-    uart_wr_valid   = 1'b1;
-    wait(uart_wr_valid && uart_wr_ready);
+
+    @(posedge uart_clk) begin
+      uart_wr_data    <= wr_data;
+      uart_wr_valid   <= 1'b1;
+    end
+
     @(posedge uart_clk);
-    uart_wr_valid   = 1'b0;
+    while (uart_wr_valid == 1'b1) begin
+      if (uart_wr_valid == 1'b1 && uart_wr_ready == 1'b1) begin
+        uart_wr_valid <= 1'b0;
+      end
+      @(posedge uart_clk);
+    end
   endtask
 
 endmodule
