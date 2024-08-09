@@ -1,0 +1,46 @@
+/home/castillo/github-repos/basys3/src/rtl/baseline/uart_rx.vhd {1 {vcom -work work -2002 -explicit -vopt -stats=none /home/castillo/github-repos/basys3/src/rtl/baseline/uart_rx.vhd
+Questa Intel FPGA Edition-64 vcom 2024.1 Compiler 2024.04 Apr 19 2024
+-- Loading package STANDARD
+-- Loading package TEXTIO
+-- Loading package std_logic_1164
+-- Loading package NUMERIC_STD
+-- Compiling entity uart_rx
+-- Compiling architecture behavioral of uart_rx
+
+} {} {}} /home/castillo/github-repos/basys3/src/rtl/baseline/clk_rst.vhd {1 {vcom -work work -2002 -explicit -vopt -stats=none /home/castillo/github-repos/basys3/src/rtl/baseline/clk_rst.vhd
+Questa Intel FPGA Edition-64 vcom 2024.1 Compiler 2024.04 Apr 19 2024
+-- Loading package STANDARD
+-- Loading package TEXTIO
+-- Loading package std_logic_1164
+-- Compiling entity clk_rst
+-- Compiling architecture structural of clk_rst
+
+} {} {}} /home/castillo/github-repos/basys3/sim/uart/uart_tb_top.v {1 {vlog -work work -vopt -sv -mixedsvvh -stats=none /home/castillo/github-repos/basys3/sim/uart/uart_tb_top.v
+Questa Intel FPGA Edition-64 vlog 2024.1 Compiler 2024.04 Apr 19 2024
+-- Compiling module uart_tb_top
+
+Top level modules:
+	uart_tb_top
+
+} {} {}} /home/castillo/github-repos/basys3/src/rtl/baseline/uart.vhd {1 {vcom -work work -2008 -explicit -vopt -stats=none /home/castillo/github-repos/basys3/src/rtl/baseline/uart.vhd
+Questa Intel FPGA Edition-64 vcom 2024.1 Compiler 2024.04 Apr 19 2024
+-- Loading package STANDARD
+-- Loading package TEXTIO
+-- Loading package std_logic_1164
+-- Compiling entity uart
+-- Compiling architecture structural of uart
+-- Loading package NUMERIC_STD
+-- Loading entity baud_rate_gen
+-- Loading entity uart_rx
+-- Loading entity uart_tx
+
+} {} {}} /home/castillo/github-repos/basys3/src/rtl/baseline/baud_rate_gen.vhd {1 {vcom -work work -2008 -explicit -vopt -stats=none /home/castillo/github-repos/basys3/src/rtl/baseline/baud_rate_gen.vhd
+Questa Intel FPGA Edition-64 vcom 2024.1 Compiler 2024.04 Apr 19 2024
+-- Loading package STANDARD
+-- Loading package TEXTIO
+-- Loading package std_logic_1164
+-- Loading package NUMERIC_STD
+-- Compiling entity baud_rate_gen
+-- Compiling architecture behavioral of baud_rate_gen
+
+} {} {}}
