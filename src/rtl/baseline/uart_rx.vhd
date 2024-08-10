@@ -27,10 +27,7 @@ architecture behavioral of uart_rx is
     -- Just support 1 start bit, 8 data bigts, no parity, and 1 stop bit for now
     constant RX_FRAME_LEN           : integer := 10;
 
-    constant RX_START_BIT           : std_logic := '0';
-    constant RX_STOP_BIT            : std_logic := '1';
-
-    constant BAUD_DIVISOR   : integer   := CLK_FREQ / BAUD_RATE;
+    constant BAUD_DIVISOR           : integer   := CLK_FREQ / BAUD_RATE;
 
     -- Asynchronous serial input needs a couple of flip flops to synchronize
     -- to this domain
@@ -68,62 +65,54 @@ begin
     begin
         if rising_edge(clk) then
             if (rst = '1') then
-                found_start         <= '0';
+                rx_busy             <= '0';
+                rx_done             <= '0';
 
-                tick_cnt            <= (others=>'0');
+                baud_tick_cnt       <= (others=>'0');
                 rx_bit_cnt          <= (others=>'0');
+
+                uart_rd_valid       <= '0';
 
             else
                 -- Looking for the start bit
-                if (found_start = '0') then
-                    if (uart_rxd_qqq = '1' and uart_rxd_qq = '0') then
-                        tick_cnt            <= (others=>'0');
-                        found_start         <= '1';
-                        rx_bit_cnt          <= rx_bit_cnt + 1;
-                        -- Load whatever was captured as the start bit into the bottom
-                        -- of the shift register
-                        if (uart_rxd_qqq = RX_START_BIT) then
-                            rx_data_sr(0)       <= uart_rxd_qqq;
-                            -- this should always be a 0 since we fired this on the falling edge
-                        end if;
-                    end if;
-                -- Sampling data bits
-                elsif ( rx_bit_cnt <= (RX_FRAME_LEN - 2) ) then
-                    if ( tick_cnt = (to_unsigned(BAUD_DIVISOR, rx_bit_cnt'length) srl 1) ) then
-                        tick_cnt            <= (others=>'0');
-                        rx_bit_cnt          <= rx_bit_cnt + 1;
-
-                        -- Keep loading into the shift register
-                        rx_data_sr(0)       <= uart_rxd_qqq;
-                        rx_data_sr((RX_FRAME_LEN - 1) downto 1)
-                                            <= rx_data_sr(RX_FRAME_LEN - 2 downto 0);
-                    else
-                        tick_cnt            <= tick_cnt + 1;
-                        rx_bit_cnt          <= rx_bit_cnt;
-                    end if;
-                -- Sample the stop bit
-                else
-                    if ( tick_cnt = (to_unsigned(BAUD_DIVISOR, rx_bit_cnt'length) srl 1) ) then
-                        tick_cnt            <= (others=>'0');
-
-                        -- Capture the last bit we received
-                        rx_data_sr(0)       <= uart_rxd_qqq;
-    --                        if (uart_rxd_qqq = RX_STOP_BIT) then
-                            -- basically need to handle the fact that we found the stop bit,
-                            -- all the other bits in between the start and here
-                            -- Then the qeustion becomes how to handle the fact that we've found
-                            -- all the bits in the transmitted word, but the receiver might not be
-                            -- ready yet.... i like the idea of a busy.  But, the right way to
-                            -- handle this is eventually FIFOing somewhere:
-                        rx_data_sr((RX_FRAME_LEN - 1) downto 1)
-                                            <= rx_data_sr(RX_FRAME_LEN - 2 downto 0);
-
-                        -- All done and can start on the next one
-                        found_start         <= '0';
+                if (rx_busy = '0') then
+                    if (uart_rxd_qq = '1' and uart_rxd_qqq = '0') then
+                        rx_busy             <= '1';
+                        baud_tick_cnt       <= (others=>'0');
                         rx_bit_cnt          <= (others=>'0');
+                        -- Load whatever was captured as the start bit into the bottom
+                        -- of the shift register. Should always be a 0 since this was fired on the
+                        -- falling edge
+                        rx_data_sr(0)       <= uart_rxd_qqq;
+                    end if;
+                    -- FIXME
+                    uart_rd_valid       <= '0';
+                else
+                    -- Everything is gated off the baud tick equaling half of the baud rate
+                    if ( baud_tick_cnt = (to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length) srl 1) ) then
+                        if ( rx_done = '1' ) then
+                            rx_busy             <= '0';
+                            rx_done             <= '0';
+                            rx_bit_cnt          <= (others=>'0');
+                            -- Data has been received and we can strobe valid (for now) - this needs to
+                            -- go somewhere else so we. FIXME WITH A FIFO!
+                            uart_rd_data        <= rx_data_sr((RX_FRAME_LEN - 1) downto 1);
+                            uart_rd_valid       <= '1';
+                        else
+                            -- SHift in next the next data bit
+                            rx_data_sr(9 downto 1   <= rx_data_sr(8 downto 0);
+                            rx_data_sr(0)           <= uart_rxd_qqq;
+                            if (rx_bit_cnt = RX_FRAME_LEN) then
+                                rx_done             <= '1';
+                            else
+                                rx_done             <= '0';
+                                rx_bit_cnt          <= rx_bit_cnt + 1;
+                            end if;
+                            -- FIXME
+                            uart_rd_valid       <= '0';
+                        end if;
                     else
-                        tick_cnt            <= tick_cnt + 1;
-                        rx_bit_cnt          <= rx_bit_cnt;
+                        baud_tick_cnt       <= baud_tick_cnt + 1;
                     end if;
                 end if;
             end if;
