@@ -38,9 +38,10 @@ architecture behavioral of uart_rx is
     -- Clock the data into this register for now
     signal  rx_data_sr              : std_logic_vector((RX_FRAME_LEN - 1) downto 0);
     signal  rx_bit_cnt              : unsigned(3 downto 0);
-    signal  tick_cnt                : unsigned(15 downto 0);
+    signal  baud_tick_cnt           : unsigned(15 downto 0);
 
-    signal  found_start             : std_logic;
+    signal  rx_busy                 : std_logic;
+    signal  rx_done                 : std_logic;
 
 begin
 
@@ -96,11 +97,11 @@ begin
                             rx_bit_cnt          <= (others=>'0');
                             -- Data has been received and we can strobe valid (for now) - this needs to
                             -- go somewhere else so we. FIXME WITH A FIFO!
-                            uart_rd_data        <= rx_data_sr((RX_FRAME_LEN - 1) downto 1);
+                            uart_rd_data        <= rx_data_sr((RX_FRAME_LEN - 2) downto 1);
                             uart_rd_valid       <= '1';
                         else
                             -- SHift in next the next data bit
-                            rx_data_sr(9 downto 1   <= rx_data_sr(8 downto 0);
+                            rx_data_sr(9 downto 1)  <= rx_data_sr(8 downto 0);
                             rx_data_sr(0)           <= uart_rxd_qqq;
                             if (rx_bit_cnt = RX_FRAME_LEN) then
                                 rx_done             <= '1';
@@ -112,7 +113,11 @@ begin
                             uart_rd_valid       <= '0';
                         end if;
                     else
-                        baud_tick_cnt       <= baud_tick_cnt + 1;
+                        if ( baud_tick_cnt = BAUD_DIVISOR ) then
+                            baud_tick_cnt       <= (others=>'0');
+                        else
+                            baud_tick_cnt       <= baud_tick_cnt + 1;
+                        end if
                     end if;
                 end if;
             end if;
