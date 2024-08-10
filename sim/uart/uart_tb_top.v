@@ -63,19 +63,9 @@ module uart_tb_top ();
   // RX simulation
   initial begin
     uart_rd_ready = 1'b1;
-    // Wait until reset is deasserted
-    @(negedge uart_rst);
-
   end 
 
-  /*
-  always @(posedge uart_clk) begin
-    if (uart_wr_valid == 1'b1 && uart_wr_ready == 1'b1) begin
-      $display("Wrote: %c", uart_wr_data);
-    end
-  end
-  */
-
+  // Dump what is read from the output
   always @(posedge uart_clk) begin
     if (uart_rd_valid == 1'b1 && uart_rd_ready == 1'b1) begin
       $display("Read: %c", uart_rd_data);
