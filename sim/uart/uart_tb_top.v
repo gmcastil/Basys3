@@ -36,10 +36,12 @@ module uart_tb_top ();
     end
   end
 
+  // TX simulation
   initial begin
-    // Set the UART inputs to well-defined values (i.e., idle) before the power
+    // Set the TX UART inputs to well-defined values (i.e., idle) before the power
     // on reset is dasserted
-    uart_idle();
+    uart_wr_valid = 1'b0;
+    uart_wr_data = 8'h0;
 
     // Wait until reset is deasserted
     @(negedge uart_rst);
@@ -51,9 +53,33 @@ module uart_tb_top ();
       uart_write_byte(str.getc(i));
     end
 
+    // The TX UART takes a long time to finish, so we just use a wait statement
+    // at the very end until its ready for data (that we aren't going to send it)
     wait(uart_wr_ready == 1'b1);
-    $display("UART simulation complete");
+    $display("UART TX simulation complete");
     $finish;
+  end
+
+  // RX simulation
+  initial begin
+    uart_rd_ready = 1'b1;
+    // Wait until reset is deasserted
+    @(negedge uart_rst);
+
+  end 
+
+  /*
+  always @(posedge uart_clk) begin
+    if (uart_wr_valid == 1'b1 && uart_wr_ready == 1'b1) begin
+      $display("Wrote: %c", uart_wr_data);
+    end
+  end
+  */
+
+  always @(posedge uart_clk) begin
+    if (uart_rd_valid == 1'b1 && uart_rd_ready == 1'b1) begin
+      $display("Read: %c", uart_rd_data);
+    end
   end
 
   // This can be either the synthesizable clock and reset module or a functional
@@ -86,16 +112,6 @@ module uart_tb_top ();
     .uart_rxd         (uart_rxd),       // in    std_logic;
     .uart_txd         (uart_txd)        // out   std_logic
   );
-
-  // Set UART inputs to quiescent states
-  function void uart_idle();
-    uart_wr_valid   = 1'b0;
-    uart_wr_data    = 8'h0;
-
-    uart_rd_ready   = 1'b0;
-
-    uart_rxd        = 1'b1;
-  endfunction
 
   // Write a byte to the UART input
   task automatic uart_write_byte(

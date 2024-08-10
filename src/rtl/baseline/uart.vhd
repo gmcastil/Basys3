@@ -48,6 +48,8 @@ architecture structural of uart is
 
     signal baud_tick        : std_logic;
 
+    signal loopback         : std_logic;
+
     signal uart_rx_debug    : std_logic_vector(31 downto 0);
     signal uart_tx_debug    : std_logic_vector(31 downto 0);
 
@@ -77,7 +79,7 @@ begin
         uart_rd_valid   => uart_rd_valid,
         uart_rd_ready   => uart_rd_ready,
 
-        uart_rxd        => uart_rxd
+        uart_rxd        => loopback
     );
 
     uart_tx_i0: entity work.uart_tx
@@ -90,7 +92,7 @@ begin
         uart_wr_valid   => uart_wr_valid,
         uart_wr_ready   => uart_wr_ready,
 
-        uart_txd        => uart_txd
+        uart_txd        => loopback
     );
 
 end architecture structural;

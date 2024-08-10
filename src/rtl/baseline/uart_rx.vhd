@@ -51,9 +51,9 @@ begin
     begin
         if rising_edge(clk) then
             if (rst = '1') then
-                uart_rxd_q      <= '0';
-                uart_rxd_qq     <= '0';
-                uart_rxd_qqq    <= '0';
+                uart_rxd_q      <= '1';
+                uart_rxd_qq     <= '1';
+                uart_rxd_qqq    <= '1';
             else
                 uart_rxd_q      <= uart_rxd;
                 uart_rxd_qq     <= uart_rxd_q;
@@ -77,7 +77,7 @@ begin
             else
                 -- Looking for the start bit
                 if (rx_busy = '0') then
-                    if (uart_rxd_qq = '1' and uart_rxd_qqq = '0') then
+                    if (uart_rxd_qq = '0' and uart_rxd_qqq = '1') then
                         rx_busy             <= '1';
                         baud_tick_cnt       <= (others=>'0');
                         rx_bit_cnt          <= (others=>'0');
@@ -117,7 +117,7 @@ begin
                             baud_tick_cnt       <= (others=>'0');
                         else
                             baud_tick_cnt       <= baud_tick_cnt + 1;
-                        end if
+                        end if;
                     end if;
                 end if;
             end if;
