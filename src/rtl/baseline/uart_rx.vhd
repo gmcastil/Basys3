@@ -39,7 +39,7 @@ architecture behavioral of uart_rx is
     signal  uart_rxd_qqq            : std_logic;
 
     -- Clock the data into this register for now
-    signal  rx_data_sr              : std_logic_vector((RX_FRAME_LEN - 1) downto 0);
+    signal  rx_data_sr              : std_logic_vector(7 downto 0);
     signal  rx_bit_cnt              : unsigned(3 downto 0);
     signal  baud_tick_cnt           : unsigned(15 downto 0);
 
@@ -97,12 +97,10 @@ begin
                     if ( found_start = '0') then
                         -- When the half counter has expired, we're at the middle of the start bit
                         if ( baud_tick_cnt = 0 ) then
-                            -- Capture start bit
+                            -- Unlike in the TX core, we do not bother storing the start and stop bits, we just let them
+                            -- steer the control path and then store the actual data later
                             if ( uart_rxd_qqq = RX_START_BIT ) then
                                 found_start         <= '1';
-                                -- Load whatever was captured as the start bit into the top
-                                -- of the shift register.
-                                rx_data_sr(9)       <= uart_rxd_qqq;
                                 -- From this point on, we're going to sample everything one full baud period
                                 -- apart
                                 baud_tick_cnt       <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length);
@@ -120,7 +118,7 @@ begin
                             if ( rx_bit_cnt = to_unsigned(RX_FRAME_LEN - 1, rx_bit_cnt'length) ) then
                                 if ( uart_rxd_qqq = RX_STOP_BIT ) then
                                     rx_busy                 <= '0';
-                                    uart_rd_data            <= rx_data_sr(9 downto 2);
+                                    uart_rd_data            <= rx_data_sr;
                                     uart_rd_valid           <= '1';
                                 else
                                     -- Didn't encounter a stop bit when we should have, so junk this tranmission
@@ -132,8 +130,10 @@ begin
                                 -- Reset our counter to sample one full baud period later
                                 baud_tick_cnt       <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length);
                                 rx_bit_cnt          <= rx_bit_cnt + 1;
-                                rx_data_sr(9)       <= uart_rxd_qqq;
-                                rx_data_sr(8 downto 0)  <= rx_data_sr(9 downto 1);
+                                -- The LSB is loaded into the top of the shift register...
+                                rx_data_sr(7)       <= uart_rxd_qqq;
+                                -- ...and then shifted down
+                                rx_data_sr(6 downto 0)  <= rx_data_sr(7 downto 1);
                             end if;
                         else
                             baud_tick_cnt       <= baud_tick_cnt - 1;
