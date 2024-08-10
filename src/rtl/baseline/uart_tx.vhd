@@ -109,7 +109,7 @@ begin
                             uart_txd                    <= tx_data_sr(0);
 
                             tx_bit_cnt                  <= tx_bit_cnt - 1;
-                            if (tx_bit_cnt = 1) then
+                            if (tx_bit_cnt = 0) then
                                 tx_done                 <= '1';
                             else
                                 tx_done                 <= '0';
