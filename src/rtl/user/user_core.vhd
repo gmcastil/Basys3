@@ -14,6 +14,8 @@ entity user_core is
         uart_wr_valid       : out   std_logic;
         uart_wr_ready       : in    std_logic;
 
+        uart_mode           : out   std_logic_vector(1 downto 0);
+
         sseg_digit          : out   std_logic_vector(6 downto 0);
         sseg_dp             : out   std_logic;
         sseg_selectn        : out   std_logic_vector(3 downto 0);
@@ -31,6 +33,8 @@ begin
 
     uart_rd_ready               <= '1';
 
+    uart_mode                   <= (others=>'0');
+
     user_led(15 downto 1)       <= (others=>'0');
 
     pwm_i0: entity work.pwm_driver
@@ -40,7 +44,7 @@ begin
     port map (
         clk                 => sys_clk(0),
         rst                 => sys_rst(0),
-        duty_cycle          => x"FF",
+        duty_cycle          => x"05",
         pwm_drive           => user_led(0)
     );
 

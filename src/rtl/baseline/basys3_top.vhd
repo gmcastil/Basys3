@@ -30,7 +30,7 @@ entity basys3_top is
     );
 
 end entity basys3_top;
-        
+
 architecture structural of basys3_top is
 
     -- Clocks and reset
@@ -54,13 +54,14 @@ architecture structural of basys3_top is
     signal sseg_dp              : std_logic;
     signal sseg_selectn         : std_logic_vector(3 downto 0);
 
-    -- UART 
+    -- UART
     signal uart_rd_data         : std_logic_vector(7 downto 0);
     signal uart_rd_valid        : std_logic;
     signal uart_rd_ready        : std_logic;
     signal uart_wr_data         : std_logic_vector(7 downto 0);
     signal uart_wr_valid        : std_logic;
     signal uart_wr_ready        : std_logic;
+    signal uart_mode            : std_logic_vector(1 downto 0);
     signal uart_rxd             : std_logic;
     signal uart_txd             : std_logic;
 
@@ -81,7 +82,7 @@ begin
 
         led_pad             => led_pad,
         led                 => led,
-    
+
         sseg_digit_pad      => sseg_digit_pad,
         sseg_digit          => sseg_digit,
 
@@ -135,7 +136,7 @@ begin
         uart_wr_valid       => uart_wr_valid,
         uart_wr_ready       => uart_wr_ready,
 
-        uart_mode           => (others=>'0'),
+        uart_mode           => uart_mode,
 
         uart_rxd            => uart_rxd,
         uart_txd            => uart_txd
@@ -163,6 +164,8 @@ begin
         uart_wr_data        => uart_wr_data,
         uart_wr_valid       => uart_wr_valid,
         uart_wr_ready       => uart_wr_ready,
+
+        uart_mode           => uart_mode,
 
         sseg_digit          => open,
         sseg_dp             => open,
