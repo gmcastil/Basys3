@@ -32,26 +32,43 @@ entity uart is
         --
         -- uart_break_detect
         --
-        -- mode select:
-        --   - loopback
-        --   - flow control?
         --
         -- interrupt out
 
-        uart_rxd            : in    std_logic;
-        uart_txd            : out   std_logic
+        -- Operational mode:
+        --   00 = normal UART operation
+        --   01 = hardware loopback
+        --   10 = simulation loopback
+        --   11 = reserved
+        --
+        -- In hardware loopback, the TXD and RXD ports function as in normal mode, and the values
+        -- read from RXD port are sent immediately through the TXD port.
+        --
+        -- In simulation loopback, the TXD and RXD ports are connected together, and the `uart_wr_*`
+        -- control signals can be used by a testbench to write data to the TX module and read it
+        -- from the RX module using the `uart_rd_*` signals.
+        --
+        -- In normal operation....we need some FIFOs....
+        uart_mode           : in    std_logic_vector(1 downto 0);
+
+        -- These need to be initialized to 1 so we don't put junk on the lines.
+        uart_rxd            : in    std_logic := '1';
+        uart_txd            : out   std_logic := '1'
     );
 
 end entity uart;
 
 architecture structural of uart is
 
-    signal baud_tick        : std_logic;
+    signal baud_tick            : std_logic;
 
-    signal loopback         : std_logic;
+    signal uart_rd_data_l     : std_logic_vector(7 downto 0);
+    signal uart_rd_valid_l    : std_logic;
+    signal uart_rd_ready_l    : std_logic;
 
-    signal uart_rx_debug    : std_logic_vector(31 downto 0);
-    signal uart_tx_debug    : std_logic_vector(31 downto 0);
+    signal uart_wr_data_l     : std_logic_vector(7 downto 0);
+    signal uart_wr_valid_l    : std_logic;
+    signal uart_wr_ready_l    : std_logic;
 
 begin
 
@@ -75,11 +92,11 @@ begin
         clk             => clk,
         rst             => rst,
 
-        uart_rd_data    => uart_rd_data,
-        uart_rd_valid   => uart_rd_valid,
-        uart_rd_ready   => uart_rd_ready,
+        uart_rd_data    => uart_rd_data_l,
+        uart_rd_valid   => uart_rd_valid_l,
+        uart_rd_ready   => uart_rd_ready_l,
 
-        uart_rxd        => loopback
+        uart_rxd        => uart_rxd
     );
 
     uart_tx_i0: entity work.uart_tx
@@ -88,12 +105,16 @@ begin
         rst             => rst,
         baud_tick       => baud_tick,
 
-        uart_wr_data    => uart_wr_data,
-        uart_wr_valid   => uart_wr_valid,
-        uart_wr_ready   => uart_wr_ready,
+        uart_wr_data    => uart_wr_data_l,
+        uart_wr_valid   => uart_wr_valid_l,
+        uart_wr_ready   => uart_wr_ready_l,
 
-        uart_txd        => loopback
+        uart_txd        => uart_txd
     );
+
+    uart_wr_data_l    <= uart_rd_data_l;
+    uart_rd_valid_l   <= uart_wr_valid_l;
+    uart_wr_ready_l   <= uart_rd_ready_l;
 
 end architecture structural;
 

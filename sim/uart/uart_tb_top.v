@@ -8,6 +8,7 @@ module uart_tb_top ();
   logic [7:0]   uart_wr_data;
   logic         uart_wr_valid;
   logic         uart_wr_ready;
+  logic [1:0]   uart_mode;
   logic         uart_rxd;
   logic         uart_txd;
 
@@ -26,6 +27,9 @@ module uart_tb_top ();
   assign uart_rst = sys_rst[0];
 
   string str = "Hello, world";
+
+  // Put the UART in simulation loopback, which connects the TX and RX ports
+  assign uart_mode = 2'b10;
 
   // Establish the 100MHz external oscillator provided by the board
   initial begin
@@ -99,6 +103,7 @@ module uart_tb_top ();
     .uart_wr_data     (uart_wr_data),   // in    std_logic_vector(7 downto 0);
     .uart_wr_valid    (uart_wr_valid),  // in    std_logic;
     .uart_wr_ready    (uart_wr_ready),  // out   std_logic;
+    .uart_mode        (uart_mode),      // in    std_logic_vector(1 downto 0);
     .uart_rxd         (uart_rxd),       // in    std_logic;
     .uart_txd         (uart_txd)        // out   std_logic
   );

@@ -135,6 +135,8 @@ begin
         uart_wr_valid       => uart_wr_valid,
         uart_wr_ready       => uart_wr_ready,
 
+        uart_mode           => (others=>'0'),
+
         uart_rxd            => uart_rxd,
         uart_txd            => uart_txd
     );

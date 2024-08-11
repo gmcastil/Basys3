@@ -9,5 +9,6 @@ work-obj*
 
 # Random Xilinx detritus
 .Xil
+transcript
 vivado_pid*.str
 
