@@ -6,6 +6,7 @@ proj/
 work-obj*
 /sim/*/vsim.wlf
 /sim/*/transcript
+perf.data
 
 # Random Xilinx detritus
 .Xil

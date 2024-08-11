@@ -38,37 +38,37 @@ entity uart is
         -- Operational mode:
         --   00 = normal UART operation
         --   01 = hardware loopback
-        --   10 = simulation loopback
+        --   10 = reserved
         --   11 = reserved
         --
         -- In hardware loopback, the TXD and RXD ports function as in normal mode, and the values
         -- read from RXD port are sent immediately through the TXD port.
         --
-        -- In simulation loopback, the TXD and RXD ports are connected together, and the `uart_wr_*`
-        -- control signals can be used by a testbench to write data to the TX module and read it
-        -- from the RX module using the `uart_rd_*` signals.
-        --
         -- In normal operation....we need some FIFOs....
         uart_mode           : in    std_logic_vector(1 downto 0);
 
         -- These need to be initialized to 1 so we don't put junk on the lines.
-        uart_rxd            : in    std_logic := '1';
-        uart_txd            : out   std_logic := '1'
+        uart_rxd            : in    std_logic;
+        uart_txd            : out   std_logic
     );
 
 end entity uart;
 
 architecture structural of uart is
 
-    signal baud_tick            : std_logic;
+    constant UART_MODE_NORMAL       : std_logic_vector(1 downto 0) := "00";
+    constant UART_MODE_LOOPBACK     : std_logic_vector(1 downto 0) := "01";
 
-    signal uart_rd_data_l     : std_logic_vector(7 downto 0);
-    signal uart_rd_valid_l    : std_logic;
-    signal uart_rd_ready_l    : std_logic;
+    signal baud_tick                : std_logic;
 
-    signal uart_wr_data_l     : std_logic_vector(7 downto 0);
-    signal uart_wr_valid_l    : std_logic;
-    signal uart_wr_ready_l    : std_logic;
+    -- Local UART signals
+    signal uart_rd_data_l           : std_logic_vector(7 downto 0);
+    signal uart_rd_valid_l          : std_logic;
+    signal uart_rd_ready_l          : std_logic;
+
+    signal uart_wr_data_l           : std_logic_vector(7 downto 0);
+    signal uart_wr_valid_l          : std_logic;
+    signal uart_wr_ready_l          : std_logic;
 
 begin
 
@@ -99,6 +99,7 @@ begin
         uart_rxd        => uart_rxd
     );
 
+    -- Should add frame counts to the RX and TX cores here
     uart_tx_i0: entity work.uart_tx
     port map (
         clk             => clk,
@@ -112,9 +113,19 @@ begin
         uart_txd        => uart_txd
     );
 
-    uart_wr_data_l    <= uart_rd_data_l;
-    uart_rd_valid_l   <= uart_wr_valid_l;
-    uart_wr_ready_l   <= uart_rd_ready_l;
+    -- In hardware loopback mode, the TX and RX function normally (i.e., the data terminal equipment
+    -- sends data to the RX port and can receive data from the TX port) and the external write and
+    -- read interfaces are ignored entirely. This is done for several reasons. for
+    -- reusability purposes, since it allows the loopback functionality to travel with the UART
+    -- core, and second, because it requires no change to user core code to test or debug the serial
+    -- interface.
+
+    uart_rd_data        <= (others=>'0') when uart_mode = UART_MODE_LOOPBACK else uart_rd_data_l;
+    uart_rd_valid       <= '0' when uart_mode = UART_MODE_LOOPBACK else uart_rd_valid_l;
+    uart_wr_ready       <= '0' when uart_mode = UART_MODE_LOOPBACK else uart_wr_ready_l;
+
+    uart_wr_data_l      <= uart_rd_data_l when uart_mode = UART_MODE_LOOPBACK else uart_wr_data;
+    uart_wr_valid_l     <= uart_rd_valid_l when uart_mode = UART_MODE_LOOPBACK else uart_wr_valid;
 
 end architecture structural;
 

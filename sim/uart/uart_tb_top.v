@@ -28,8 +28,11 @@ module uart_tb_top ();
 
   string str = "Hello, world";
 
-  // Put the UART in simulation loopback, which connects the TX and RX ports
-  assign uart_mode = 2'b10;
+  // Put the UART in normal mode for simulation and then short the TXD output to
+  // the RXD input. UART doesn't need to know about simulation mode (unlike
+  // hardware loopback, that shorts the control interface togethe)
+  assign uart_mode = 2'b00;
+  assign uart_rxd = uart_txd;
 
   // Establish the 100MHz external oscillator provided by the board
   initial begin

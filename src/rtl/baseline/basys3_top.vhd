@@ -65,6 +65,9 @@ architecture structural of basys3_top is
     signal uart_rxd             : std_logic;
     signal uart_txd             : std_logic;
 
+    attribute MARK_DEBUG : string;
+    attribute MARK_DEBUG of slider_sw : signal is "FALSE";
+
 begin
 
     -- IO ring
@@ -170,6 +173,8 @@ begin
         sseg_digit          => open,
         sseg_dp             => open,
         sseg_selectn        => open,
+
+        slider_sw           => slider_sw,
 
         user_led            => user_led
     );

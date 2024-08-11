@@ -20,6 +20,8 @@ entity user_core is
         sseg_dp             : out   std_logic;
         sseg_selectn        : out   std_logic_vector(3 downto 0);
 
+        slider_sw           : in    std_logic_vector(15 downto 0);
+
         user_led            : out   std_logic_vector(15 downto 0)
     );
 end entity user_core;
@@ -28,12 +30,7 @@ architecture structural of user_core is
 
 begin
 
-    uart_wr_valid               <= '1';
-    uart_wr_data                <= x"48";
-
-    uart_rd_ready               <= '1';
-
-    uart_mode                   <= (others=>'0');
+    uart_mode                   <= slider_sw(1 downto 0);
 
     user_led(15 downto 1)       <= (others=>'0');
 
