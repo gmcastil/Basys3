@@ -65,9 +65,6 @@ architecture structural of basys3_top is
     signal uart_rxd             : std_logic;
     signal uart_txd             : std_logic;
 
-    attribute MARK_DEBUG : string;
-    attribute MARK_DEBUG of slider_sw : signal is "FALSE";
-
 begin
 
     -- IO ring
@@ -125,7 +122,8 @@ begin
     uart_i0: entity work.uart
     generic map (
         CLK_FREQ            => 100000000,
-        BAUD_RATE           => 115200
+        BAUD_RATE           => 115200,
+        UART_DEBUG          => "true"
     )
     port map (
         clk                 => clk_100m00,
