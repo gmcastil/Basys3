@@ -13,7 +13,11 @@ entity uart_tx is
         uart_wr_valid   : in    std_logic;
         uart_wr_ready   : out   std_logic;
 
-        -- This needs some modification so that it powers up to a 1 prior to reset
+        -- Number of frames sent since the last reset
+        tx_frame_cnt    : out   unsigned(31 downto 0);
+
+        -- This may need some modification so that it powers up to a 1 prior to reset. Confirm in
+        -- hardware that there is a flop driving this that gets INIT = 1
         uart_txd        : out   std_logic   := '1'
     );
 
@@ -31,8 +35,6 @@ architecture behavioral of uart_tx is
     signal  tx_data_sr          : std_logic_vector((TX_FRAME_LEN - 1) downto 0);
     -- Number of bits to be sent per frame
     signal  tx_bit_cnt          : unsigned(3 downto 0);
-    -- Number of frames sent since the last reset
-    signal  tx_frame_cnt        : unsigned(31 downto 0);
 
     -- Have stored the byte to send and are busy shifting out a frame
     signal  tx_busy             : std_logic;
@@ -102,6 +104,8 @@ begin
                         if (tx_done = '1') then
                             tx_busy                     <= '0';
                             tx_done                     <= '0';
+                            -- Asserting that we're ready for data now saves us a clock
+                            -- of idle time
                             uart_wr_ready               <= '1';
                             tx_frame_cnt                <= tx_frame_cnt + 1;
                         else

@@ -7,7 +7,7 @@ entity uart_rx is
         -- Input clock frequency
         CLK_FREQ    : integer       := 100000000;
         -- Desired baud rate
-        BAUD_RATE   : integer       := 115200 
+        BAUD_RATE   : integer       := 115200
     );
     port (
         clk             : in    std_logic;
@@ -16,6 +16,9 @@ entity uart_rx is
         uart_rd_data    : out   std_logic_vector(7 downto 0);
         uart_rd_valid   : out   std_logic;
         uart_rd_ready   : in    std_logic;
+
+        rx_frame_cnt    : out   unsigned(31 downto 0);
+        rx_frame_err    : out   unsigned(31 downto 0);
 
         uart_rxd        : in    std_logic
     );
@@ -65,6 +68,25 @@ begin
         end if;
     end process;
 
+    -- Handle error and frame counts here
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if (rst = '1') then
+                rx_frame_err        <= (others=>'0');
+                rx_frame_cnt        <= (others=>'0');
+            else
+                if (uart_rd_valid = '1' and uart_rd_ready = '0') then
+                    -- Frame errors occur if the UART has a valid data byte and the client is not
+                    -- ready for it
+                    rx_frame_err        <= rx_frame_err + 1;
+                elsif (uart_rd_valid = '1' and uart_rd_ready = '1') then
+                    rx_frame_cnt        <= rx_frame_cnt + 1;
+                end if;
+            end if;
+        end if;
+    end process;
+
     process(clk)
     begin
         if rising_edge(clk) then
@@ -89,10 +111,9 @@ begin
                         baud_tick_cnt       <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length) srl 1;
 
                     end if;
-                    -- FIXME fifo this
                     uart_rd_valid       <= '0';
                 else
-                    -- Capture the start bit half a baud period into the transmission and align subsequent samples to this 
+                    -- Capture the start bit half a baud period into the transmission and align subsequent samples to this
                     -- point. If we didn't capture a start bit, then back to the idle or not busy condition
                     if ( found_start = '0') then
                         -- When the half counter has expired, we're at the middle of the start bit
