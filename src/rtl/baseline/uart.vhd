@@ -79,9 +79,9 @@ architecture structural of uart is
     signal tx_fifo_empty            : std_logic;
 
     signal rx_fifo_wr_en            : std_logic;
-    signal rx_fifo_wr_data          : std_logic_vector((rx_DATA_WIDTH - 1) downto 0);
+    signal rx_fifo_wr_data          : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
     signal rx_fifo_rd_en            : std_logic;
-    signal rx_fifo_rd_data          : std_logic_vector((rx_DATA_WIDTH - 1) downto 0);
+    signal rx_fifo_rd_data          : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
     signal rx_fifo_full             : std_logic;
     signal rx_fifo_empty            : std_logic;
 
