@@ -47,22 +47,27 @@ compile_unisims() {
     fi
 
     vlib "${unisim_dir}"
-    #vmap UNISIM "${unisim_dir}"
+    vmap UNISIM "${unisim_dir}"
 
     # From UG900 on UNISIM library
-    vcom -work "${unisim_dir}" "${vhdl_src_dir}/unisims/unisim_VCOMP.vhd"
-    vcom -work "${unisim_dir}" "${vhdl_src_dir}/unisims/unisim_VPKG.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/unisim_VCOMP.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/unisim_VPKG.vhd"
 
     # This is probably needed to support older devices like the Virtex-5 without
     # needing to install ISE.  This particular component just wraps a FIFO18E1
     # component.
-    vcom -work "${unisim_dir}" "${vhdl_src_dir}/unisims/retarget/FIFO18.vhd"
 
     # Now compile the primitives that we want into this library
-    vcom -work "${unisim_dir}" "${vhdl_src_dir}/unisims/primitive/FIFO18E1.vhd"
-    vcom -work "${unisim_dir}" "${vhdl_src_dir}/unisims/primitive/FIFO18E2.vhd"
-    vcom -work "${unisim_dir}" "${vhdl_src_dir}/unisims/primitive/FIFO36E1.vhd"
-    vcom -work "${unisim_dir}" "${vhdl_src_dir}/unisims/primitive/FIFO36E2.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO18E1.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO18E2.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO36E1.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO36E2.vhd"
+
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO16.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO18.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO18_36.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO36.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO36_72.vhd"
 
 }
 
@@ -76,14 +81,13 @@ compile_unimacro() {
     fi
 
     vlib "${unimacro_dir}"
-    #vmap UNIMACRO "${unimacro_dir}"
+    vmap UNIMACRO "${unimacro_dir}"
 
     # From UG900 on UNIMACRO library
-    vcom -work "${unimacro_dir}" "${vhdl_src_dir}/unimacro/unimacro_VCOMP.vhd"
+    vcom -work UNIMACRO "${vhdl_src_dir}/unimacro/unimacro_VCOMP.vhd"
 
     # Now can compile the primitives that are desired here
-    vcom -work "${unimacro_dir}" "${vhdl_src_dir}/unimacro/FIFO_SYNC_MACRO.vhd"
-
+    vcom -work UNIMACRO -2008 "${vhdl_src_dir}/unimacro/FIFO_SYNC_MACRO.vhd"
 }
 
 # Make sure we have someplace to write to
@@ -97,6 +101,30 @@ fi
 # yet, so create it first
 mkdir -p "${lib_dir}/${vivado_version}/${sim_version}"
 
-compile_unisims "${lib_dir}/${vivado_version}/${sim_version}/UNISIM"
-compile_unimacro "${lib_dir}/${vivado_version}/${sim_version}/UNIMACRO"
+#compile_unisims "${lib_dir}/${vivado_version}/${sim_version}/UNISIM"
+#compile_unimacro "${lib_dir}/${vivado_version}/${sim_version}/UNIMACRO"
+
+vlib work
+vmap work work
+
+# vcom -work work "${vhdl_src_dir}/unisims/unisim_VCOMP.vhd"
+# vcom -work work "${vhdl_src_dir}/unisims/unisim_VPKG.vhd"
+
+# This is probably needed to support older devices like the Virtex-5 without
+# needing to install ISE.  This particular component just wraps a FIFO18E1
+# component.
+
+# Now compile the primitives that we want into this library
+vcom -work work "${vhdl_src_dir}/unisims/primitive/FIFO18E1.vhd"
+vcom -work work "${vhdl_src_dir}/unisims/primitive/FIFO18E2.vhd"
+vcom -work work "${vhdl_src_dir}/unisims/primitive/FIFO36E1.vhd"
+vcom -work work "${vhdl_src_dir}/unisims/primitive/FIFO36E2.vhd"
+
+vcom -work work "${vhdl_src_dir}/unisims/retarget/FIFO16.vhd"
+vcom -work work "${vhdl_src_dir}/unisims/retarget/FIFO18.vhd"
+vcom -work work "${vhdl_src_dir}/unisims/retarget/FIFO18_36.vhd"
+vcom -work work "${vhdl_src_dir}/unisims/retarget/FIFO36.vhd"
+vcom -work work "${vhdl_src_dir}/unisims/retarget/FIFO36_72.vhd"
+
+vcom -work work -2008 "${vhdl_src_dir}/unimacro/FIFO_SYNC_MACRO.vhd"
 
