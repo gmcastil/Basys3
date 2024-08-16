@@ -29,7 +29,47 @@ end entity fifo_sync;
 
 architecture structural of fifo_sync is
 
+    -- Number of clocks to hold the FIFO reset past the deassertion of the external reset.
+    -- For example, when this is set to 5, the FIFO reset and its inputs will be held in the reset
+    -- condition for an additional 5 clock cycles after the deassertion of the input reset.
+    constant RST_ASSERT_CNT         : natural := 5;
+
+    signal fifo_rst                 : std_logic := '1';
+    signal fifo_rd_en               : std_logic := '0';
+    signal fifo_wr_en               : std_logic := '0';
+    signal fifo_rst_cnt             : unsigned(2 downto 0) := RST_ASSERT_CNT;
+
 begin
+
+    -- Per the 7-Series Memory Resources User Guide (UG473) the asynchronous reset should be held
+    -- high for five read and write clock cycles to ensure all internal states and flags are reset to
+    -- the correct values.  During reset, the write and read enable signals should both be
+    -- deasserted.
+    process(clk)
+    begin
+        if (rst = '1') then
+            fifo_rst_cnt        <= RST_ASSERT_CNT;
+
+            fifo_rst            <= '1';
+            fifo_rd_en          <= '0';
+            fifo_wr_en          <= '0';
+        else
+            if (fifo_rst_cnt = 0) then
+                fifo_rst_cnt    <= (others=>'0');
+
+                fifo_rst        <= '0';
+                fifo_rd_en      <= rd_en;
+                fifo_wr_en      <= wr_en;
+
+            else
+                fifo_rst_cnt    <= fifo_rst_cnt - 1;
+
+                fifo_rst        <= '1';
+                fifo_rd_en      <= '0';
+                fifo_wr_en      <= '0';
+            end if;
+        end if;
+    end process;
 
     -- For 7-Series (e.g., Artix-7 or ZYNQ-7000) we use the device macro instantiation template
     -- from Vivado as described in UG953.
@@ -75,9 +115,9 @@ begin
       WRERR         => open,                -- 1-bit output write error
       CLK           => clk,                 -- 1-bit input clock
       DI            => wr_data,             -- Input data, width defined by DATA_WIDTH parameter
-      RDEN          => rd_en,               -- 1-bit input read enable
-      RST           => rst,                 -- 1-bit input reset
-      WREN          => wr_en                -- 1-bit input write enable
+      RDEN          => fifo_rd_en,          -- 1-bit input read enable
+      RST           => fifo_rst,            -- 1-bit input reset
+      WREN          => fifo_wr_en           -- 1-bit input write enable
    );
    -- End of FIFO_SYNC_MACRO_inst instantiation
 
