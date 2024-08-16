@@ -7,6 +7,8 @@ work-obj*
 /sim/*/vsim.wlf
 /sim/*/transcript
 perf.data
+# Ignore the simulation libraries
+/sim/lib
 
 # Random Xilinx detritus
 .Xil

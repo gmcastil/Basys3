@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# Manually compile selected Xilinx simulation libraries for ModelSim
+
+TOOLS_ROOT=/tools
+
+# Import common functions
+if ! source "../common/common.sh" >/dev/null 2>&1; then
+    printf '%s\n' "Error: Could not import common functions" >&2
+    exit 1
+fi
+
+if ! check_modelsim; then
+    err "Could not find ModelSim tools in current PATH"
+    exit 1
+fi
+
+# Not attempting to target multiple versions of Vivado, just want to automate as
+# much of this as possible
+vivado_version="2024.1"
+
+# Need to clearly define the tool and the tool version (e.g., 24.2 vs 24.2s or
+# student versions). In my experience, simulation libraries need to match the
+# target simulator exactly. Playing fast and loose with tool versions, library
+# versions, source versions is a recipe for disaster.
+sim_version="modelsim_16.1"
+
+# Root directory to place simulation libraries after compilation
+lib_dir="../lib"
+
+# Location of Xilinx source directory, usually something containing a directory
+# like `data/verilog/src/`.  This might vary version to version and note also
+# that 
+verilog_src_dir="${TOOLS_ROOT}/Xilinx/Vivado/${vivado_version}/data/verilog/src"
+vhdl_src_dir="${TOOLS_ROOT}/Xilinx/Vivado/${vivado_version}/data/vhdl/src"
+
+# The files and order required to compile the various Xilinx libraries are
+# entirely speculative, but are to some text extent inferred or described in
+# UG900 in the section 'Using Xilinx Simulation Libraries'.
+compile_unisims() {
+    local unisim_dir
+    unisim_dir="${1}"
+
+    # Delete the existing simulation library if it exists
+    if [[ -d "${unisim_dir}" ]]; then
+        rm -rf "${unisim_dir}"
+    fi
+
+    vlib "${unisim_dir}"
+    vmap UNISIM "${unisim_dir}"
+
+    # From UG900 on UNISIM library
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/unisim_VCOMP.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/unisim_VPKG.vhd"
+
+    # This is probably needed to support older devices like the Virtex-5 without
+    # needing to install ISE.  This particular component just wraps a FIFO18E1
+    # component.
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget_VCOMP.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/unisim_retarget_VCOMP.vhd"
+
+    # Now compile the primitives that we want into this library
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO18E1.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO18E2.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO36E1.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/primitive/FIFO36E2.vhd"
+
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO16.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO18.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO18_36.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO36.vhd"
+    vcom -work UNISIM "${vhdl_src_dir}/unisims/retarget/FIFO36_72.vhd"
+}
+
+compile_unimacro() {
+    local unimacro_dir
+    unimacro_dir="${1}"
+
+    # Delete the existing simulation library if it exists
+    if [[ -d "${unimacro_dir}" ]]; then
+        rm -rf "${unimacro_dir}"
+    fi
+
+    vlib "${unimacro_dir}"
+    vmap UNIMACRO "${unimacro_dir}"
+
+    # From UG900 on UNIMACRO library
+    vcom -work UNIMACRO "${vhdl_src_dir}/unimacro/unimacro_VCOMP.vhd"
+
+    # Now can compile the primitives that are desired here
+    vcom -work UNIMACRO -2008 "${vhdl_src_dir}/unimacro/FIFO_SYNC_MACRO.vhd"
+}
+
+# Make sure we have someplace to write to
+mkdir -p "${lib_dir}"
+if [[ ! -w "${lib_dir}" ]]; then
+    err "Cannot write to ${lib_dir}"
+    exit 1
+fi
+
+# The vlib command refuses to create libraries in locations that don't exist
+# yet, so create it first
+mkdir -p "${lib_dir}/${vivado_version}/${sim_version}"
+
+compile_unisims "${lib_dir}/${vivado_version}/${sim_version}/UNISIM"
+compile_unimacro "${lib_dir}/${vivado_version}/${sim_version}/UNIMACRO"
+

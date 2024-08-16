@@ -16,4 +16,7 @@ check_modelsim() {
     command -v vopt >/dev/null 2>&1 || return 1
 }
 
+check_vivado() {
+    command -v vivado >/dev/null 2>&1 || return 1
+}
 
