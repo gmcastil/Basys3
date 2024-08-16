@@ -11,7 +11,9 @@ if ! check_modelsim; then
     exit 1
 fi
 
+ip_dir="../../src/ip"
 rtl_dir="../../src/rtl"
+lib_dir="../lib"
 tb_dir="./"
 
 work="work"
@@ -27,7 +29,12 @@ set -e
 vlib "${work}"
 vmap work "${work}"
 
+vmap UNISIM "${lib_dir}/2024.1/modelsim_16.1/UNISIM"
+vmap UNIMACRO "${lib_dir}/2024.1/modelsim_16.1/UNIMACRO"
+
 vlog -work "${work}" -sv "${tb_dir}/uart_tb_top.v"
+
+vcom -work "${work}" -2008 "${ip_dir}/baseline/fifo_sync.vhd"
 
 vcom -work "${work}" -2008 "${rtl_dir}/baseline/clk_rst.vhd"
 vcom -work "${work}" -2008 "${rtl_dir}/baseline/baud_rate_gen.vhd"
