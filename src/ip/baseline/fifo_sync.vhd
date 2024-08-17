@@ -31,8 +31,6 @@ end entity fifo_sync;
 architecture structural of fifo_sync is
 
     -- Number of clocks to hold the FIFO reset past the deassertion of the external reset.
-    -- For example, when this is set to 5, the FIFO reset and its inputs will be held in the reset
-    -- condition for an additional 5 clock cycles after the deassertion of the input reset.
     constant RST_HOLD_CNT           : unsigned(3 downto 0) := x"5";
 
     signal fifo_rst                 : std_logic := '1';
