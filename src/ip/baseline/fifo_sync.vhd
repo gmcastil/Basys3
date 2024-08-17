@@ -36,8 +36,6 @@ architecture structural of fifo_sync is
     constant RST_HOLD_CNT           : unsigned(3 downto 0) := x"5";
 
     signal fifo_rst                 : std_logic := '1';
-    signal fifo_rd_en               : std_logic := '0';
-    signal fifo_wr_en               : std_logic := '0';
     signal fifo_rst_cnt             : unsigned(3 downto 0) := RST_HOLD_CNT;
 
 begin
@@ -50,24 +48,14 @@ begin
     begin
         if (rst = '1') then
             fifo_rst_cnt        <= RST_HOLD_CNT;
-
             fifo_rst            <= '1';
-            fifo_rd_en          <= '0';
-            fifo_wr_en          <= '0';
         else
             if (fifo_rst_cnt = 0) then
                 fifo_rst_cnt    <= (others=>'0');
-
                 fifo_rst        <= '0';
-                fifo_rd_en      <= rd_en;
-                fifo_wr_en      <= wr_en;
-
             else
                 fifo_rst_cnt    <= fifo_rst_cnt - 1;
-
                 fifo_rst        <= '1';
-                fifo_rd_en      <= '0';
-                fifo_wr_en      <= '0';
             end if;
         end if;
     end process;
@@ -116,9 +104,9 @@ begin
         WRERR                   => open,        -- 1-bit output write error
         CLK                     => clk,         -- 1-bit input clock
         DI                      => wr_data,     -- Input data, width defined by DATA_WIDTH parameter
-        RDEN                    => fifo_rd_en,  -- 1-bit input read enable
+        RDEN                    => rd_en,  -- 1-bit input read enable
         RST                     => fifo_rst,    -- 1-bit input reset
-        WREN                    => fifo_wr_en   -- 1-bit input write enable
+        WREN                    => wr_en   -- 1-bit input write enable
     );
     -- End of FIFO_SYNC_MACRO_inst instantiation
 
