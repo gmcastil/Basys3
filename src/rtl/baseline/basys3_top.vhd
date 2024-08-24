@@ -123,7 +123,7 @@ begin
     generic map (
         CLK_FREQ            => 100000000,
         BAUD_RATE           => 115200,
-        UART_DEBUG          => "true"
+        UART_DEBUG          => "false"
     )
     port map (
         clk                 => clk_100m00,
