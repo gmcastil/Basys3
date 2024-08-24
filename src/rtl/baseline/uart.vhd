@@ -46,7 +46,7 @@ entity uart is
         --
         -- Operational mode:
         --   00 = normal UART operation
-        --   01 = hardware loopback
+        --   01 = reserved
         --   10 = reserved
         --   11 = reserved
         --
@@ -75,6 +75,7 @@ architecture structural of uart is
     signal tx_fifo_wr_data          : std_logic_vector((TX_DATA_WIDTH - 1) downto 0);
     signal tx_fifo_rd_en            : std_logic;
     signal tx_fifo_rd_data          : std_logic_vector((TX_DATA_WIDTH - 1) downto 0);
+    signal tx_fifo_ready            : std_logic;
     signal tx_fifo_full             : std_logic;
     signal tx_fifo_empty            : std_logic;
 
@@ -82,6 +83,7 @@ architecture structural of uart is
     signal rx_fifo_wr_data          : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
     signal rx_fifo_rd_en            : std_logic;
     signal rx_fifo_rd_data          : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
+    signal rx_fifo_ready            : std_logic;
     signal rx_fifo_full             : std_logic;
     signal rx_fifo_empty            : std_logic;
 
@@ -170,27 +172,21 @@ begin
         uart_txd        => uart_txd
     );
 
-    -- Set up loopback mode so that data received from the UART RX port is transmitted up through
-    -- the TX port. Note that this includes both FIFO instances and decouples the UART TXD / RXD
-    -- function from the external read and write interfaces.
-    tx_fifo_wr_en       <= not rx_fifo_empty when uart_mode = UART_MODE_LOOPBACK else uart_wr_valid;
-    tx_fifo_wr_data     <= rx_fifo_rd_data when uart_mode = UART_MODE_LOOPBACK else uart_wr_data ;
-    uart_wr_ready       <= '0' when uart_mode = UART_MODE_LOOPBACK else not tx_fifo_full;
+    tx_fifo_wr_en       <= uart_wr_valid and tx_fifo_ready and not tx_fifo_full;
+    tx_fifo_wr_data     <= uart_wr_data;
+    uart_wr_ready       <= not tx_fifo_full and tx_fifo_ready;
 
-    rx_fifo_rd_en       <= not tx_fifo_full when uart_mode = UART_MODE_LOOPBACK else uart_rd_ready;
-    uart_rd_data        <= (others=>'0') when uart_mode = UART_MODE_LOOPBACK else rx_fifo_rd_data;
-    uart_rd_valid       <= '0' when uart_mode = UART_MODE_LOOPBACK else not rx_fifo_empty;
-
-    -- Include the FIFO in all modes, so these never change based on the mode select bits. The TX
-    -- core is hooked to the read side of the FIFO and the RX core is hooked to the write side of
-    -- the FIFO.
+    tx_fifo_rd_en       <= uart_wr_ready_l and tx_fifo_ready and not tx_fifo_empty;
     uart_wr_data_l      <= tx_fifo_rd_data;
-    uart_wr_valid_l     <= not tx_fifo_empty;
-    tx_fifo_rd_en       <= uart_wr_ready_l;
+    uart_wr_valid_l     <= not tx_fifo_empty and tx_fifo_ready;
 
+    rx_fifo_wr_en       <= uart_rd_valid_l and rx_fifo_ready and not rx_fifo_full;
     rx_fifo_wr_data     <= uart_rd_data_l;
-    rx_fifo_wr_en       <= uart_rd_valid_l;
-    uart_rd_ready_l     <= not rx_fifo_full;
+    uart_rd_ready_l     <= not rx_fifo_full and rx_fifo_ready;
+
+    rx_fifo_rd_en       <= uart_rd_ready and not rx_fifo_empty and rx_fifo_ready;
+    uart_rd_data        <= rx_fifo_rd_data;
+    uart_rd_valid       <= not rx_fifo_empty and rx_fifo_ready;
 
     fifo_tx_i0: entity work.fifo_sync
     generic map (
@@ -206,6 +202,7 @@ begin
         wr_data         => tx_fifo_wr_data,     -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
         rd_en           => tx_fifo_rd_en,       -- in    std_logic;
         rd_data         => tx_fifo_rd_data,     -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
+        ready           => tx_fifo_ready,       -- out   std_logic;
         full            => tx_fifo_full,        -- out   std_logic;
         empty           => tx_fifo_empty        -- out   std_logic
     );
@@ -224,6 +221,7 @@ begin
         wr_data         => rx_fifo_wr_data,     -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
         rd_en           => rx_fifo_rd_en,       -- in    std_logic;
         rd_data         => rx_fifo_rd_data,     -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
+        ready           => rx_fifo_ready,       -- out   std_logic;
         full            => rx_fifo_full,        -- out   std_logic;
         empty           => rx_fifo_empty        -- out   std_logic
     );
