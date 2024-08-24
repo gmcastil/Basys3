@@ -9,6 +9,10 @@ work-obj*
 perf.data
 # Ignore the simulation libraries
 /sim/lib
+# Also ignore project files that ModelSim creates - not going to version control
+# these. All simulations should be scripted and just create the simulation at run time
+/sim/*/*.mpf
+/sim/*/*.mti
 
 # Random Xilinx detritus
 .Xil

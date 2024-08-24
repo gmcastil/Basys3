@@ -1,4 +1,8 @@
-module uart_rx_tb ();
+`timescale 1ns / 1ps;
+
+import uart_pkg::uart_bfm;
+
+module uart_rx_tb;
 
   logic [7:0]   uart_rd_data;
   logic         uart_rd_valid;
@@ -24,6 +28,8 @@ module uart_rx_tb ();
   assign uart_clk = sys_clk[0];
   assign uart_rst = sys_rst[0];
 
+  uart_bfm bfm;
+
   // Establish the 100MHz external oscillator provided by the board
   initial begin
     clk_ext = 1'b0;
@@ -44,13 +50,23 @@ module uart_rx_tb ();
     uart_rd_ready = 1'b0;
     uart_wr_valid = 1'b0;
 
+    // To test the RX portion of the hardware, we use a UART BFM that supports
+    // things like individual writes, entire files writing,
+    bfm = new(.baud_rate(115200), .verbose(1));
+
     // Wait until reset is deasserted
     @(negedge uart_rst);
     $display("UART reset deasserted");
     // UART stimulus can start several clocks after reset is deasserted
     repeat (10) @(posedge uart_clk);
-    $stop("Done");
-    #(100us);
+
+    bfm.send_frame(8'h10, uart_rxd);
+    bfm.send_frame(8'h11, uart_rxd);
+    bfm.send_frame(8'h12, uart_rxd);
+    bfm.send_frame(8'h13, uart_rxd);
+
+    $display("Done");
+    $stop();
   end
 
   clk_rst #(

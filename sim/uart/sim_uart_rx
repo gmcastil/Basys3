@@ -33,6 +33,8 @@ vmap work "${work}"
 vmap UNISIM "${lib_dir}/2024.1/modelsim_16.1/UNISIM"
 vmap UNIMACRO "${lib_dir}/2024.1/modelsim_16.1/UNIMACRO"
 
+# Packages need to be compiled in before the rest of the testbench
+vlog -work "${work}" -sv "${tb_dir}/uart_pkg.v"
 vlog -work "${work}" -sv "${tb_dir}/uart_rx_tb.v"
 
 # Compile DUT
