@@ -11,6 +11,23 @@ use UNIMACRO.vcomponents.all;
 entity fifo_sync is
     generic (
         DEVICE          : string        := "7SERIES";
+        -- FIFO parameters are related by the desired DATA_WIDTH, FIFO depth, and
+        -- desired primitive:
+        --
+        -----------------------------------------------------------------
+        -- DATA_WIDTH | FIFO_SIZE | FIFO Depth | RDCOUNT/WRCOUNT Width --
+        -- ===========|===========|============|=======================--
+        --   37-72    |  "36Kb"   |     512    |         9-bit         --
+        --   19-36    |  "36Kb"   |    1024    |        10-bit         --
+        --   19-36    |  "18Kb"   |     512    |         9-bit         --
+        --   10-18    |  "36Kb"   |    2048    |        11-bit         --
+        --   10-18    |  "18Kb"   |    1024    |        10-bit         --
+        --    5-9     |  "36Kb"   |    4096    |        12-bit         --
+        --    5-9     |  "18Kb"   |    2048    |        11-bit         --
+        --    1-4     |  "36Kb"   |    8192    |        13-bit         --
+        --    1-4     |  "18Kb"   |    4096    |        12-bit         --
+        -----------------------------------------------------------------
+        --
         DATA_WIDTH      : natural       := 32;
         FIFO_SIZE       : string        := "36Kb";
         COUNT_WIDTH     : natural       := 10
@@ -22,6 +39,7 @@ entity fifo_sync is
         wr_data         : in    std_logic_vector((DATA_WIDTH - 1) downto 0);
         rd_en           : in    std_logic;
         rd_data         : out   std_logic_vector((DATA_WIDTH - 1) downto 0);
+        ready           : out   std_logic;
         full            : out   std_logic;
         empty           : out   std_logic
     );
@@ -33,55 +51,62 @@ architecture structural of fifo_sync is
     -- Number of clocks to hold the FIFO reset past the deassertion of the external reset.
     constant RST_HOLD_CNT           : unsigned(3 downto 0) := x"5";
 
-    signal fifo_rst                 : std_logic := '1';
-    signal fifo_rst_cnt             : unsigned(3 downto 0) := RST_HOLD_CNT;
-
-begin
-
     -- Per the 7-Series Memory Resources User Guide (UG473) the asynchronous reset should be held
     -- high for five read and write clock cycles to ensure all internal states and flags are reset to
     -- the correct values.  During reset, the write and read enable signals should both be
-    -- deasserted.
+    -- deasserted and remain deasserted until the reset sequence is complete.
+    signal fifo_rst                 : std_logic := '0';
+    signal fifo_rst_cnt             : unsigned(3 downto 0) := RST_HOLD_CNT;
+    signal rst_done                 : std_logic;
+
+begin
+
+    ready   <= rst_done;
+
     process(clk)
     begin
-        if (rst = '1') then
-            fifo_rst_cnt        <= RST_HOLD_CNT;
-            fifo_rst            <= '1';
-        else
-            if (fifo_rst_cnt = 0) then
-                fifo_rst_cnt    <= (others=>'0');
+        if rising_edge(clk) then
+            if (rst = '1') then
                 fifo_rst        <= '0';
+                rst_done        <= '0';
+                fifo_rst_cnt    <= RST_HOLD_CNT;
             else
-                fifo_rst_cnt    <= fifo_rst_cnt - 1;
-                fifo_rst        <= '1';
+                if (rst_done = '0') then
+                    -- A FIFO reset sequence is complete when the write and read enable signals
+                    -- have been deasserted prior to assertion of a reset and have remained deasserted
+                    -- for RST_HOLD_CNT clocks
+                    if (wr_en = '0' and rd_en = '0' and (fifo_rst_cnt = 0) ) then
+                        rst_done        <= '1';
+                    else
+                        rst_done        <= '0';
+                    end if;
+
+                    -- If either read or write enable are asserted during the reset hold sequence, we
+                    -- deassert the reset that we were trying to perform and start all over again.
+                    if (wr_en = '1' or rd_en = '1') then
+                        fifo_rst_cnt    <= RST_HOLD_CNT;
+                        fifo_rst        <= '0';
+                    else
+                        fifo_rst_cnt    <= fifo_rst_cnt - 1;
+                        fifo_rst        <= '1';
+                    end if;
+
+                else
+                    fifo_rst        <= '0';
+                    rst_done        <= '1';
+                    fifo_rst_cnt    <= RST_HOLD_CNT;
+                end if;
             end if;
         end if;
     end process;
 
     -- For 7-Series (e.g., Artix-7 or ZYNQ-7000) we use the device macro instantiation template
     -- from Vivado as described in UG953.
-
+    --
     -- FIFO_SYNC_MACRO: Synchronous First-In, First-Out (FIFO) RAM Buffer
     --                  Artix-7
     -- Xilinx HDL Language Template, version 2024.1
-
-    -- Note -  This Unimacro model assumes the port directions to be "downto".
-    --         Simulation of this model with "to" in the port directions could lead to erroneous results.
-
-    -----------------------------------------------------------------
-    -- DATA_WIDTH | FIFO_SIZE | FIFO Depth | RDCOUNT/WRCOUNT Width --
-    -- ===========|===========|============|=======================--
-    --   37-72    |  "36Kb"   |     512    |         9-bit         --
-    --   19-36    |  "36Kb"   |    1024    |        10-bit         --
-    --   19-36    |  "18Kb"   |     512    |         9-bit         --
-    --   10-18    |  "36Kb"   |    2048    |        11-bit         --
-    --   10-18    |  "18Kb"   |    1024    |        10-bit         --
-    --    5-9     |  "36Kb"   |    4096    |        12-bit         --
-    --    5-9     |  "18Kb"   |    2048    |        11-bit         --
-    --    1-4     |  "36Kb"   |    8192    |        13-bit         --
-    --    1-4     |  "18Kb"   |    4096    |        12-bit         --
-    -----------------------------------------------------------------
-
+    --
     FIFO_SYNC_MACRO_inst : FIFO_SYNC_MACRO
     generic map (
         DEVICE                  => "7SERIES",   -- Target Device: "VIRTEX5, "VIRTEX6", "7SERIES"
@@ -102,9 +127,9 @@ begin
         WRERR                   => open,        -- 1-bit output write error
         CLK                     => clk,         -- 1-bit input clock
         DI                      => wr_data,     -- Input data, width defined by DATA_WIDTH parameter
-        RDEN                    => rd_en,  -- 1-bit input read enable
+        RDEN                    => rd_en,       -- 1-bit input read enable
         RST                     => fifo_rst,    -- 1-bit input reset
-        WREN                    => wr_en   -- 1-bit input write enable
+        WREN                    => wr_en        -- 1-bit input write enable
     );
     -- End of FIFO_SYNC_MACRO_inst instantiation
 
