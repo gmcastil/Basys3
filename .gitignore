@@ -13,6 +13,7 @@ perf.data
 # these. All simulations should be scripted and just create the simulation at run time
 /sim/*/*.mpf
 /sim/*/*.mti
+/sim/*/vish_stacktrace.vstf
 
 # Random Xilinx detritus
 .Xil
