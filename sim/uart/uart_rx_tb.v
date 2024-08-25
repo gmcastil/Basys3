@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps;
+`timescale 1ns / 1ps
 
 import uart_pkg::uart_bfm;
 
@@ -19,16 +19,17 @@ module uart_rx_tb;
   logic [5:0]   sys_clk;
   logic [5:0]   sys_rst;
 
-  logic         clk_100m00;
-  logic         rst_100m00;
-
   logic         uart_clk;
   logic         uart_rst;
 
+  uart_bfm bfm;
+
+  string test_file = "128b-random.bin";
+  string recv_file = "128b-random-recv.bin";
+  int recv_fd;
+
   assign uart_clk = sys_clk[0];
   assign uart_rst = sys_rst[0];
-
-  uart_bfm bfm;
 
   // Establish the 100MHz external oscillator provided by the board
   initial begin
@@ -39,6 +40,8 @@ module uart_rx_tb;
     end
   end
 
+  // Sequence of events which resets the UART, configures the BFM, sends the
+  // data file and then ends the test when it's been sent
   initial begin
     // External reset is not asserted and the RXD is pulled high (powering up or
     // resetting the UART with something jabbering on the line is absolutely
@@ -52,21 +55,52 @@ module uart_rx_tb;
 
     // To test the RX portion of the hardware, we use a UART BFM that supports
     // things like individual writes, entire files writing,
-    bfm = new(.baud_rate(115200), .verbose(1));
+    bfm = new();
 
     // Wait until reset is deasserted
     @(negedge uart_rst);
-    $display("UART reset deasserted");
-    // UART stimulus can start several clocks after reset is deasserted
+    $display("UART reset complete");
+    // UART stimulus can start several clocks after reset is deasserted (this is not exactly true,
+    // since the FIFO might not be ready yet.  Future revision should include some sort of a ready
+    // signal, but for now this is good)
     repeat (10) @(posedge uart_clk);
 
-    bfm.send_frame(8'h10, uart_rxd);
-    bfm.send_frame(8'h11, uart_rxd);
-    bfm.send_frame(8'h12, uart_rxd);
-    bfm.send_frame(8'h13, uart_rxd);
+    // Now that the UART is done with reset (see note on ready and FIFO status)
+    uart_rd_ready = 1'b1;
+    @(posedge uart_clk);
+
+    $display("Sending %s to UART", test_file);
+    bfm.send_file(test_file, uart_rxd);
 
     $display("Done");
-    $stop();
+    $finish();
+  end
+
+  // Open the received file so we can save what is received in a clocked process
+  // that is sensitive to clock edges
+  initial begin
+    recv_fd = $fopen(recv_file, "wb");
+    if (recv_fd) begin
+      $display("Opened %s for storing received data", recv_file);
+    end else begin
+      $fatal(1, "Could not open %s for writing", recv_file);
+    end
+    $fflush(recv_fd);
+  end
+
+    always @(posedge uart_clk) begin
+        if ( (uart_rd_valid == 1'b1 ) && (uart_rd_ready == 1'b1) ) begin
+            if (recv_fd) begin
+                $fwrite(recv_fd, "%c", uart_rd_data);
+            end
+        end
+    end
+
+  final begin
+    if (recv_fd) begin
+      $display("Closing %s", recv_file);
+      $fclose(recv_fd);
+    end
   end
 
   clk_rst #(
