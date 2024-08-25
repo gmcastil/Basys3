@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps;
+`timescale 1ns / 1ps
 
 package uart_pkg;
 
@@ -56,11 +56,38 @@ class uart_bfm;
 
     endfunction
 
+    // Read an entire file
+    task automatic send_file(
+        string filename,
+        ref logic txd
+    );
+        int fd;
+        logic [7:0] tx_data;
+        int bytes_sent = 0;
+        int x;
+
+        fd = $fopen(filename, "rb");
+        if (!fd) begin
+            $fatal(1, "Could not open %s for reading", filename);
+        end
+
+        while (!$feof(fd)) begin
+            if ($fread(tx_data, fd) != 0) begin
+                send_frame(tx_data, txd);
+                bytes_sent++;
+            end
+        end
+        $fclose(fd);
+
+        $display("Sent %d bytes", bytes_sent);
+
+    endtask
+
     // Send a single frame of data (usually a byte) with whatever additional bits
     // are required based on the UART configuration
-    task send_frame(
-        logic  [7:0]  tx_data,
-        ref logic     txd
+    task automatic send_frame(
+        logic [7:0] tx_data,
+        ref logic txd
     );
         // Send start bits
         for (int i=0; i<this.start_bits; i++) begin
@@ -89,7 +116,7 @@ class uart_bfm;
 
     // Set the parity bit value for even or odd parity
     function bit set_parity(
-        logic   [7:0]   data
+        logic [7:0] data
     );
         if (this.parity == "even") begin
             set_parity = ^data;
