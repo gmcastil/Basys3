@@ -14,6 +14,8 @@ perf.data
 /sim/*/*.mpf
 /sim/*/*.mti
 /sim/*/vish_stacktrace.vstf
+# Can create our own simulation input files
+/sim/*.bin
 
 # Random Xilinx detritus
 .Xil
