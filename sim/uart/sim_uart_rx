@@ -19,31 +19,33 @@ tb_dir="./"
 work="work"
 
 # Remove existing ModelSim work library
-if [[ -f "${work}/_info" ]]; then
-    rm -vrf "${work}"
+if [[ -f "$work/_info" ]]; then
+    rm -vrf "$work"
 fi
 
 # Exit on errors while we're compiling
 set -e
 
-vlib "${work}"
-vmap work "${work}"
+vlib "$work"
+vmap work "$work"
 
 # Map in the Xilinx simulation libraries
 vmap UNISIM "${lib_dir}/2024.1/modelsim_16.1/UNISIM"
 vmap UNIMACRO "${lib_dir}/2024.1/modelsim_16.1/UNIMACRO"
 
 # Packages need to be compiled in before the rest of the testbench
-vlog -work "${work}" -sv "${tb_dir}/uart_pkg.v"
-vlog -work "${work}" -sv "${tb_dir}/uart_rx_tb.v"
+vlog -work "$work" -sv "$tb_dir/uart_pkg.v"
+vlog -work "$work" -sv "$tb_dir/uart_rx_tb.v"
 
 # Compile DUT
-vcom -work "${work}" -2008 "${ip_dir}/baseline/fifo_sync.vhd"
-vcom -work "${work}" -2008 "${rtl_dir}/baseline/clk_rst.vhd"
-vcom -work "${work}" -2008 "${rtl_dir}/baseline/baud_rate_gen.vhd"
-vcom -work "${work}" -2008 "${rtl_dir}/baseline/uart_rx.vhd"
-vcom -work "${work}" -2008 "${rtl_dir}/baseline/uart_tx.vhd"
-vcom -work "${work}" -2008 "${rtl_dir}/baseline/uart.vhd"
+vcom -work "$work" -2008 "$ip_dir/baseline/fifo_sync.vhd"
+
+vcom -work "$work" -2008 "$rtl_dir/baseline/skid_buffer.vhd"
+vcom -work "$work" -2008 "$rtl_dir/baseline/clk_rst.vhd"
+vcom -work "$work" -2008 "$rtl_dir/baseline/baud_rate_gen.vhd"
+vcom -work "$work" -2008 "$rtl_dir/baseline/uart_rx.vhd"
+vcom -work "$work" -2008 "$rtl_dir/baseline/uart_tx.vhd"
+vcom -work "$work" -2008 "$rtl_dir/baseline/uart.vhd"
 
 # Done compiling, so turn this back on
 set +e
