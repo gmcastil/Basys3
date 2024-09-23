@@ -172,22 +172,6 @@ begin
         uart_txd        => uart_txd
     );
 
-    tx_fifo_wr_en       <= uart_wr_valid and tx_fifo_ready and not tx_fifo_full;
-    tx_fifo_wr_data     <= uart_wr_data;
-    uart_wr_ready       <= not tx_fifo_full and tx_fifo_ready;
-
-    tx_fifo_rd_en       <= uart_wr_ready_l and tx_fifo_ready and not tx_fifo_empty;
-    uart_wr_data_l      <= tx_fifo_rd_data;
-    uart_wr_valid_l     <= not tx_fifo_empty and tx_fifo_ready;
-
-    rx_fifo_wr_en       <= uart_rd_valid_l and rx_fifo_ready and not rx_fifo_full;
-    rx_fifo_wr_data     <= uart_rd_data_l;
-    uart_rd_ready_l     <= not rx_fifo_full and rx_fifo_ready;
-
-    rx_fifo_rd_en       <= uart_rd_ready and not rx_fifo_empty and rx_fifo_ready;
-    uart_rd_data        <= rx_fifo_rd_data;
-    uart_rd_valid       <= not rx_fifo_empty and rx_fifo_ready;
-
     fifo_tx_i0: entity work.fifo_sync
     generic map (
         DEVICE          => "7SERIES",
@@ -224,6 +208,23 @@ begin
         ready           => rx_fifo_ready,       -- out   std_logic;
         full            => rx_fifo_full,        -- out   std_logic;
         empty           => rx_fifo_empty        -- out   std_logic
+    );
+
+    skid_buffer_rx: entity work.skid_buffer
+    generic map (
+        DATA_WIDTH      => RX_DATA_WIDTH,
+    )
+    port map (
+        clk             => clk,                 -- in    std_logic;
+        rst             => rst,                 -- in    std_logic;
+        fifo_rd_data    => rx_fifo_rd_data,     -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
+        fifo_rd_enable  => rx_fifo_rd_en,       -- out   std_logic := '0';
+        fifo_full       => rx_fifo_full,        -- in    std_logic;
+        fifo_empty      => rx_fifo_empty,       -- in    std_logic;
+        fifo_ready      => rx_fifo_ready        -- in    std_logic;
+        rd_data         => uart_rd_data,        -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
+        rd_valid        => uart_rd_valid,       -- out   std_logic := '0';
+        rd_ready        => uart_rd_ready        -- in    std_logic
     );
 
 end architecture structural;
