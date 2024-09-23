@@ -57,7 +57,7 @@ architecture structural of fifo_sync is
     -- deasserted and remain deasserted until the reset sequence is complete.
     signal fifo_rst                 : std_logic := '0';
     signal fifo_rst_cnt             : unsigned(3 downto 0) := RST_HOLD_CNT;
-    signal rst_done                 : std_logic;
+    signal rst_done                 : std_logic := '0';
 
 begin
 
