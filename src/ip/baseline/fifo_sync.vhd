@@ -2,11 +2,11 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-library UNISIM;
-use UNISIM.vcomponents.all;
+library unisim;
+use unisim.vcomponents.all;
 
-library UNIMACRO;
-use UNIMACRO.vcomponents.all;
+library unimacro;
+use unimacro.vcomponents.all;
 
 entity fifo_sync is
     generic (
@@ -28,9 +28,10 @@ entity fifo_sync is
         --    1-4     |  "18Kb"   |    4096    |        12-bit         --
         -----------------------------------------------------------------
         --
-        DATA_WIDTH      : natural       := 32;
+        DATA_WIDTH      : integer       := 32;
         FIFO_SIZE       : string        := "36Kb";
-        COUNT_WIDTH     : natural       := 10
+        -- Enable FIFO output register
+        DO_REG          : integer       := 1
     );
     port (
         clk             : in    std_logic;
@@ -100,38 +101,39 @@ begin
         end if;
     end process;
 
-    -- For 7-Series (e.g., Artix-7 or ZYNQ-7000) we use the device macro instantiation template
-    -- from Vivado as described in UG953.
-    --
-    -- FIFO_SYNC_MACRO: Synchronous First-In, First-Out (FIFO) RAM Buffer
-    --                  Artix-7
-    -- Xilinx HDL Language Template, version 2024.1
-    --
-    FIFO_SYNC_MACRO_inst : FIFO_SYNC_MACRO
-    generic map (
-        DEVICE                  => "7SERIES",   -- Target Device: "VIRTEX5, "VIRTEX6", "7SERIES"
-        ALMOST_FULL_OFFSET      => X"0080",     -- Sets almost full threshold
-        ALMOST_EMPTY_OFFSET     => X"0080",     -- Sets the almost empty threshold
-        DATA_WIDTH              => DATA_WIDTH,  -- Valid values are 1-72 (37-72 only valid when FIFO_SIZE="36Kb")
-        FIFO_SIZE               => FIFO_SIZE    -- Target BRAM, "18Kb" or "36Kb"
-    )
-    port map (
-        ALMOSTEMPTY             => open,        -- 1-bit output almost empty
-        ALMOSTFULL              => open,        -- 1-bit output almost full
-        DO                      => rd_data,     -- Output data, width defined by DATA_WIDTH parameter
-        EMPTY                   => empty,       -- 1-bit output empty
-        FULL                    => full,        -- 1-bit output full
-        RDCOUNT                 => open,        -- Output read count, width determined by FIFO depth
-        RDERR                   => open,        -- 1-bit output read error
-        WRCOUNT                 => open,        -- Output write count, width determined by FIFO depth
-        WRERR                   => open,        -- 1-bit output write error
-        CLK                     => clk,         -- 1-bit input clock
-        DI                      => wr_data,     -- Input data, width defined by DATA_WIDTH parameter
-        RDEN                    => rd_en,       -- 1-bit input read enable
-        RST                     => fifo_rst,    -- 1-bit input reset
-        WREN                    => wr_en        -- 1-bit input write enable
-    );
-    -- End of FIFO_SYNC_MACRO_inst instantiation
+    g_fifo_sync: if (DEVICE = "7SERIES") generate
+    begin
+        -- For 7-Series (e.g., Artix-7 or ZYNQ-7000) we use the device macro instantiation template
+        -- from Vivado as described in UG953. Note that the Vivado 2024.1 VHDL template omits the
+        -- `DO_REG` optional output register generic, which is a rather significant oversight. Let
+        -- this be a learning experience to never trust the tool or documentation templates in
+        -- actual RTL - go read the source code or the component declaration!
+        FIFO_SYNC_MACRO_inst: FIFO_SYNC_MACRO
+        generic map (
+            ALMOST_FULL_OFFSET      => X"0080",
+            ALMOST_EMPTY_OFFSET     => X"0080", 
+            DATA_WIDTH              => DATA_WIDTH,
+            DEVICE                  => "7SERIES",
+            DO_REG                  => 1,
+            FIFO_SIZE               => FIFO_SIZE
+        )
+        port map (
+            ALMOSTEMPTY             => open,        -- 1-bit output almost empty
+            ALMOSTFULL              => open,        -- 1-bit output almost full
+            DO                      => rd_data,     -- Output data, width defined by DATA_WIDTH parameter
+            EMPTY                   => empty,       -- 1-bit output empty
+            FULL                    => full,        -- 1-bit output full
+            RDCOUNT                 => open,        -- Output read count, width determined by FIFO depth
+            RDERR                   => open,        -- 1-bit output read error
+            WRCOUNT                 => open,        -- Output write count, width determined by FIFO depth
+            WRERR                   => open,        -- 1-bit output write error
+            CLK                     => clk,         -- 1-bit input clock
+            DI                      => wr_data,     -- Input data, width defined by DATA_WIDTH parameter
+            RDEN                    => rd_en,       -- 1-bit input read enable
+            RST                     => fifo_rst,    -- 1-bit input reset
+            WREN                    => wr_en        -- 1-bit input write enable
+        );
+    end generate g_fifo_sync;
 
 end architecture structural;
 
