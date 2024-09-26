@@ -65,8 +65,8 @@ architecture structural of uart is
     constant UART_MODE_LOOPBACK     : std_logic_vector(1 downto 0) := "01";
 
     -- Width of the FIFO data ports
-    constant TX_DATA_WIDTH          : natural := 8;
-    constant RX_DATA_WIDTH          : natural := 8;
+    constant TX_DATA_WIDTH          : integer := 8;
+    constant RX_DATA_WIDTH          : integer := 8;
 
     signal baud_tick                : std_logic;
 
@@ -126,6 +126,18 @@ architecture structural of uart is
 
 begin
 
+    -- I think this is something that needs to be changed entirely, but for now, just using the
+    -- reset to determine if the external reader is ready to drive the UART_RX module is probably
+    -- ok. Key idea here is that the external reader needs to be reading entirely from the skid
+    -- buffer, and not have any involvement with the uart_rx.  Looking at the elaborated design in
+    -- Vivado, I'm not entirely sure that I actually need a ready input to the RX side of the UART.
+    -- It might be a lot simpler to just have a clock, reset, and the RXD line.  Then it just spits
+    -- out bytes and valid strobes.  I need to decide where / how I want to do error checking as
+    -- well as defining a control register interface because, eventually, I'm going to want ot write
+    -- a driver for this thing.  So, perhaps a good thing to do would be to look at the driver
+    -- source code for other UART devices.
+    uart_rd_ready_l     <= not rst;
+
     baud_rate_gen_i0: entity work.baud_rate_gen
     generic map (
         CLK_FREQ        => CLK_FREQ,
@@ -145,14 +157,11 @@ begin
     port map (
         clk             => clk,
         rst             => rst,
-
         uart_rd_data    => uart_rd_data_l,
         uart_rd_valid   => uart_rd_valid_l,
         uart_rd_ready   => uart_rd_ready_l,
-
         rx_frame_cnt    => rx_frame_cnt,
         rx_frame_err    => rx_frame_err,
-
         uart_rxd        => uart_rxd
     );
 
@@ -162,13 +171,10 @@ begin
         clk             => clk,
         rst             => rst,
         baud_tick       => baud_tick,
-
         uart_wr_data    => uart_wr_data_l,
         uart_wr_valid   => uart_wr_valid_l,
         uart_wr_ready   => uart_wr_ready_l,
-
         tx_frame_cnt    => tx_frame_cnt,
-
         uart_txd        => uart_txd
     );
 
@@ -177,7 +183,7 @@ begin
         DEVICE          => "7SERIES",
         DATA_WIDTH      => TX_DATA_WIDTH,
         FIFO_SIZE       => "18Kb",
-        COUNT_WIDTH     => 11
+        DO_REG          => 1
     )
     port map (
         clk             => clk,                 -- in    std_logic;
@@ -196,13 +202,13 @@ begin
         DEVICE          => "7SERIES",
         DATA_WIDTH      => RX_DATA_WIDTH,
         FIFO_SIZE       => "18Kb",
-        COUNT_WIDTH     => 11
+        DO_REG          => 1
     )
     port map (
         clk             => clk,                 -- in    std_logic;
         rst             => rst,                 -- in    std_logic;
-        wr_en           => rx_fifo_wr_en,       -- in    std_logic;
-        wr_data         => rx_fifo_wr_data,     -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
+        wr_en           => uart_rd_valid_l,     -- in    std_logic;
+        wr_data         => uart_rd_data_l,      -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
         rd_en           => rx_fifo_rd_en,       -- in    std_logic;
         rd_data         => rx_fifo_rd_data,     -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
         ready           => rx_fifo_ready,       -- out   std_logic;
@@ -212,16 +218,16 @@ begin
 
     skid_buffer_rx: entity work.skid_buffer
     generic map (
-        DATA_WIDTH      => RX_DATA_WIDTH,
+        DATA_WIDTH      => RX_DATA_WIDTH
     )
     port map (
         clk             => clk,                 -- in    std_logic;
         rst             => rst,                 -- in    std_logic;
         fifo_rd_data    => rx_fifo_rd_data,     -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
-        fifo_rd_enable  => rx_fifo_rd_en,       -- out   std_logic := '0';
+        fifo_rd_en      => rx_fifo_rd_en,       -- out   std_logic := '0';
         fifo_full       => rx_fifo_full,        -- in    std_logic;
         fifo_empty      => rx_fifo_empty,       -- in    std_logic;
-        fifo_ready      => rx_fifo_ready        -- in    std_logic;
+        fifo_ready      => rx_fifo_ready,       -- in    std_logic;
         rd_data         => uart_rd_data,        -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
         rd_valid        => uart_rd_valid,       -- out   std_logic := '0';
         rd_ready        => uart_rd_ready        -- in    std_logic
