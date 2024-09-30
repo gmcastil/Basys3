@@ -14,7 +14,7 @@ entity skid_buffer is
         fifo_full       : in    std_logic;
         fifo_empty      : in    std_logic;
         fifo_ready      : in    std_logic;
-        
+
         rd_data         : out   std_logic_vector((DATA_WIDTH - 1) downto 0);
         rd_valid        : out   std_logic := '0';
         rd_ready        : in    std_logic
@@ -24,19 +24,11 @@ end entity skid_buffer;
 
 architecture behavioral of skid_buffer is
 
-    constant S0         : std_logic_vector(3 downto 0) := x"0";
-    constant S1         : std_logic_vector(3 downto 0) := x"1";
-    constant S2         : std_logic_vector(3 downto 0) := x"2";
-
     -- Indicator that there is valid data from the FIFO
-    signal fifo_valid   : std_logic;
+    signal fifo_rd_valid            : std_logic;
     -- Indicator that there is valid data in the skid register
-    signal skid_valid   : std_logic;
-
-    signal skid_data    : std_logic_vector((DATA_WIDTH -1) downto 0);
-
-    signal state        : std_logic_vector(3 downto 0);
-
+    signal skid_valid               : std_logic;
+    signal skid_data                : std_logic_vector((DATA_WIDTH -1) downto 0);
 
 begin
 
@@ -44,41 +36,62 @@ begin
     begin
         if rising_edge(clk) then
             if (rst = '1') then
-                state               <= S0;
-
-                fifo_rd_en      <= '0';
                 rd_valid            <= '0';
-
                 skid_valid          <= '0';
+                fifo_rd_valid       <= '0';
 
             else
-                if fifo_empty = '0' then
-                    fifo_rd_en  <= '1';
-                else 
-                    fifo_rd_en  <= '0';
+                -- Simple machine to control the output data interface
+                if (rd_valid = '1' and rd_ready = '1') then
+                    -- Data in the holding register to send
+                    if (skid_valid = '1') then
+                        rd_valid            <= '1';
+                        rd_data             <= skid_data;
+                    -- Data at the FIFO read output to send
+                    elsif (fifo_rd_valid = '1') then
+                        rd_data             <= fifo_rd_data;
+                        rd_valid            <= '1';
+                    -- No data in either location to send (could add a tracer here if wanted)
+                    else
+                        rd_valid            <= '0';
+                    end if;
+                elsif (rd_valid = '0') then
+                    -- Data in the holding register to send
+                    if (skid_valid = '1') then
+                        rd_valid            <= '1';
+                        rd_data             <= skid_data;
+                    -- Data at the FIFO read output to send
+                    elsif (fifo_rd_valid = '1') then
+                        rd_valid            <= '1';
+                        rd_data             <= fifo_rd_data;
+                    end if;
                 end if;
 
---                case state is
---
---                    when S0 =>
---
---                        if (fifo_ready = '1') and (fifo_empty = '0') then
---                            state               <= S1;
---                            fifo_rd_en      <= '1';
---                        else
---                            state               <= S0;
---                            fifo_rd_en      <= '0';
---                        end if;
---
---                    when S1 =>
---                        state               <= S2;
---
---                        fifo_rd_en      <= '1';
---
---                    when others =>
---                        state       <= S0;
---
---                end case;
+                -- Need to handle the coupling between the two halves of the logic here. Data in
+                -- the skid register will always get consumed first when data moves at the output
+                if (skid_valid = '1' and rd_valid = '1' and rd_ready = '1') then
+                    skid_valid          <= '0';
+                --When we are still reading from the FIFO, there is already data at the FIFO output and
+                --we are presenting data at the output, we will need to stall
+                elsif (fifo_rd_en = '1' and fifo_rd_valid = '1' and rd_valid = '1' and rd_ready = '0') then
+                    skid_valid          <= '1';
+                    skid_data           <= fifo_rd_data;
+                end if;
+
+                -- Only read from the FIFO when it is ready, non-empty and we have a spot to put the
+                -- data on the next clock cycle
+                if (fifo_ready = '1' and fifo_empty = '0' and ( (fifo_rd_valid = '0' ) or (fifo_rd_valid = '1' and skid_valid = '0') ) ) then
+                    fifo_rd_en          <= '1';
+                else
+                    fifo_rd_en          <= '0';
+                end if;
+
+                if (fifo_rd_en = '1') then
+                    fifo_rd_valid       <= '1';
+                else
+                    fifo_rd_valid       <= '0';
+                end if;
+
             end if;
         end if;
     end process;

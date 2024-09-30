@@ -88,11 +88,11 @@ architecture structural of uart is
     signal rx_fifo_empty            : std_logic;
 
     -- Local UART signals
-    signal uart_rd_data_l           : std_logic_vector(7 downto 0);
+    signal uart_rd_data_l           : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
     signal uart_rd_valid_l          : std_logic;
     signal uart_rd_ready_l          : std_logic;
 
-    signal uart_wr_data_l           : std_logic_vector(7 downto 0);
+    signal uart_wr_data_l           : std_logic_vector((TX_DATA_WIDTH - 1) downto 0);
     signal uart_wr_valid_l          : std_logic;
     signal uart_wr_ready_l          : std_logic;
 
@@ -180,40 +180,40 @@ begin
 
     fifo_tx_i0: entity work.fifo_sync
     generic map (
-        DEVICE          => "7SERIES",
-        DATA_WIDTH      => TX_DATA_WIDTH,
-        FIFO_SIZE       => "18Kb",
-        DO_REG          => 1
+        DEVICE              => "7SERIES",
+        FIFO_WIDTH          => TX_DATA_WIDTH,
+        FIFO_DEPTH          => 2048,
+        FIFO_READ_LATENCY   => 1
     )
     port map (
-        clk             => clk,                 -- in    std_logic;
-        rst             => rst,                 -- in    std_logic;
-        wr_en           => tx_fifo_wr_en,       -- in    std_logic;
-        wr_data         => tx_fifo_wr_data,     -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
-        rd_en           => tx_fifo_rd_en,       -- in    std_logic;
-        rd_data         => tx_fifo_rd_data,     -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
-        ready           => tx_fifo_ready,       -- out   std_logic;
-        full            => tx_fifo_full,        -- out   std_logic;
-        empty           => tx_fifo_empty        -- out   std_logic
+        clk                 => clk,                 -- in    std_logic;
+        rst                 => rst,                 -- in    std_logic;
+        wr_en               => tx_fifo_wr_en,       -- in    std_logic;
+        wr_data             => tx_fifo_wr_data,     -- in    std_logic_vector((FIFO_WIDTH - 1) downto 0);
+        rd_en               => tx_fifo_rd_en,       -- in    std_logic;
+        rd_data             => tx_fifo_rd_data,     -- out   std_logic_vector((FIFO_WIDTH - 1) downto 0);
+        ready               => tx_fifo_ready,       -- out   std_logic;
+        full                => tx_fifo_full,        -- out   std_logic;
+        empty               => tx_fifo_empty        -- out   std_logic
     );
 
     fifo_rx_i0: entity work.fifo_sync
     generic map (
-        DEVICE          => "7SERIES",
-        DATA_WIDTH      => RX_DATA_WIDTH,
-        FIFO_SIZE       => "18Kb",
-        DO_REG          => 1
+        DEVICE              => "7SERIES",
+        FIFO_WIDTH          => RX_DATA_WIDTH,
+        FIFO_DEPTH          => 2048,
+        FIFO_READ_LATENCY   => 1
     )
     port map (
-        clk             => clk,                 -- in    std_logic;
-        rst             => rst,                 -- in    std_logic;
-        wr_en           => uart_rd_valid_l,     -- in    std_logic;
-        wr_data         => uart_rd_data_l,      -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
-        rd_en           => rx_fifo_rd_en,       -- in    std_logic;
-        rd_data         => rx_fifo_rd_data,     -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
-        ready           => rx_fifo_ready,       -- out   std_logic;
-        full            => rx_fifo_full,        -- out   std_logic;
-        empty           => rx_fifo_empty        -- out   std_logic
+        clk                 => clk,                 -- in    std_logic;
+        rst                 => rst,                 -- in    std_logic;
+        wr_en               => uart_rd_valid_l,     -- in    std_logic;
+        wr_data             => uart_rd_data_l,      -- in    std_logic_vector((FIFO_WIDTH - 1) downto 0);
+        rd_en               => rx_fifo_rd_en,       -- in    std_logic;
+        rd_data             => rx_fifo_rd_data,     -- out   std_logic_vector((FIFO_WIDTH - 1) downto 0);
+        ready               => rx_fifo_ready,       -- out   std_logic;
+        full                => rx_fifo_full,        -- out   std_logic;
+        empty               => rx_fifo_empty        -- out   std_logic
     );
 
     skid_buffer_rx: entity work.skid_buffer

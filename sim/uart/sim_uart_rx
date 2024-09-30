@@ -11,6 +11,10 @@ if ! check_modelsim; then
     exit 1
 fi
 
+# Need to specify the simulator and version
+questa_version="22.2"
+sim_version="questa_fse_${questa_version}"
+
 ip_dir="../../src/ip"
 rtl_dir="../../src/rtl"
 lib_dir="../lib"
@@ -23,14 +27,17 @@ work="work"
 set -e
 
 # Remove existing ModelSim work library
-vdel -lib "${work}" -all
+if [[ -d "${work}" ]]; then
+    rm -rf "${work}"
+fi
 
 vlib "${work}"
 vmap work "${work}"
 
 # Map in the Xilinx simulation libraries
-vmap UNISIM "${lib_dir}/2024.1/modelsim_16.1/UNISIM"
-vmap UNIMACRO "${lib_dir}/2024.1/modelsim_16.1/UNIMACRO"
+vmap UNISIM "${lib_dir}/2024.1/${sim_version}/UNISIM"
+vmap UNIMACRO "${lib_dir}/2024.1/${sim_version}/UNIMACRO"
+vmap xpm "${lib_dir}/2024.1/${sim_version}/xpm"
 
 # Packages need to be compiled in before the rest of the testbench
 vlog -work "${work}" -sv "${tb_dir}/uart_pkg.v"
