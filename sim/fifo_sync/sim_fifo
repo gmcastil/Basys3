@@ -1,0 +1,16 @@
+#!/bin/bash
+
+ip_dir="../../src/ip/baseline"
+
+work="work"
+
+if [[ -d "${work}" ]]; then
+    rm -rf "${work}"
+fi
+
+vlib "${work}"
+vmap work "${work}"
+
+vlog -work "${work}" -sv "fifo_sync_tb.v"
+vcom -work "${work}" "${ip_dir}/fifo_sync.vhd"
+
