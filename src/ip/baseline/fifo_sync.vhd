@@ -15,6 +15,7 @@ entity fifo_sync is
 
         -- Can be either 18Kb or 36Kb - note that the FIFO depth is implicitly defined
         -- by the choice of FIFO primitive and desired width of the data ports
+        --
         -- FIFO_WIDTH | FIFO_SIZE | BRAM Width | FIFO Depth
         -- ------------------------------------------------
         --    1 - 4   |   18Kb    |    4       |   4096
