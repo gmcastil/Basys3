@@ -12,25 +12,23 @@ entity fifo_sync is
         -- Width of the input and output FIFO data ports at the top level of the entity and can be
         -- 1-36 when selecting 18Kb FIFO primitive and 1-72 for 36Kb primitives
         FIFO_WIDTH          : natural       := 8;
+
         -- Can be either 18Kb or 36Kb - note that the FIFO depth is implicitly defined
         -- by the choice of FIFO primitive and desired width of the data ports
+        -- FIFO_WIDTH | FIFO_SIZE | BRAM Width | FIFO Depth
+        -- ------------------------------------------------
+        --    1 - 4   |   18Kb    |    4       |   4096
+        --    1 - 4   |   36Kb    |    4       |   8192
+        --    5 - 9   |   18Kb    |    8       |   2048
+        --    5 - 9   |   36Kb    |    8       |   4096
+        --   10 - 18  |   18Kb    |    16      |   1024
+        --   10 - 18  |   36Kb    |    16      |   2048
+        --   19 - 36  |   18Kb    |    32      |   512 
+        --   19 - 36  |   36Kb    |    32      |   1024
+        --   36 - 72  |   36Kb    |    64      |   512 
         --
-        -- This is entirely speculative - to actually calculate the depth, need to look at the
-        -- FIFO_MODE that was selected and the width of the
-        -- FIFO_WIDTH | FIFO_SIZE | FIFO Depth
-        -- ===========|===========|===========
-        --   37-72    |  "36Kb"   |     512
-        --   19-36    |  "36Kb"   |    1024
-        --   19-36    |  "18Kb"   |     512
-        --   10-18    |  "36Kb"   |    2048
-        --   10-18    |  "18Kb"   |    1024
-        --    5-9     |  "36Kb"   |    4096
-        --    5-9     |  "18Kb"   |    2048
-        --    1-4     |  "36Kb"   |    8192
-        --    1-4     |  "18Kb"   |    4096
-        --------------------------------------
         FIFO_SIZE           : string        := "18Kb";
-        --
+
         -- Enable output register
         DO_REG              : natural       := 0
     );
