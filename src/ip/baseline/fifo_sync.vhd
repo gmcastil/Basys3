@@ -1,6 +1,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use std.textio.all;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -30,9 +31,10 @@ entity fifo_sync is
         --   36 - 72  |   36Kb    |    64      |   512 
         --
         FIFO_SIZE           : string        := "18Kb";
-
         -- Enable output register
-        DO_REG              : natural       := 0
+        DO_REG              : natural       := 0;
+        -- Enable debug output for simulation purposes
+        DEBUG               : boolean       := false
     );
     port (
         clk                 : in    std_logic;
@@ -50,14 +52,43 @@ end entity fifo_sync;
 
 architecture structural of fifo_sync is
 
-    -- Print out an error message
-    procedure print_error(
+    -- Print out a failure message
+    procedure print_failure(
         msg         : in string
     ) is
     begin
         assert false
-        report "Error: " & msg
-        severity error;
+        report "Failure: " & msg
+        severity failure;
+    end procedure;
+
+    -- Print out FIFO generics and configuration constants for debugging purposes
+    procedure print_debug_info(
+        device              : in string;
+        fifo_width          : in natural;
+        fifo_size           : in string;
+        do_reg              : in natural;
+        fifo_mode           : in string;
+        data_width          : in natural;
+        data_port_width     : in natural;
+        parity_port_width   : in natural
+    ) is
+        variable msg : line;
+    begin
+        -- Building a single message string so that the simulator reports everything at the same
+        -- instance without separating them by delta cycles
+        write(msg, string'("Debug: DEVICE = " & device));
+        write(msg, string'(LF & "Debug: FIFO_SIZE = " & fifo_size));
+        write(msg, string'(LF & "Debug: FIFO_WIDTH = " & integer'image(fifo_width)));
+        write(msg, string'(LF & "Debug: DO_REG = " & integer'image(do_reg)));
+        write(msg, string'(LF & "Debug: FIFO_MODE = " & fifo_mode));
+        write(msg, string'(LF & "Debug: DATA_WIDTH = " & integer'image(data_width)));
+        write(msg, string'(LF & "Debug: DATA_PORT_WIDTH = " & integer'image(data_port_width)));
+        write(msg, string'(LF & "Debug: PARITY_PORT_WIDTH = " & integer'image(parity_port_width)));
+
+        -- Now write it to stdout
+        writeline(output, msg);
+
     end procedure;
 
     -- Determine FIFO mode value based on the desired user FIFO size and FIFO width.
@@ -65,22 +96,20 @@ architecture structural of fifo_sync is
         fifo_size   : in string;
         fifo_width  : in natural
     ) return string is
-        variable fifo_mode : string(1 to 9);
     begin
         if (fifo_size = "36Kb") then
-            if (fifo_width = 72) then
-                fifo_mode := "FIFO36_72";
+            if (fifo_width > 36 and fifo_width <= 72) then
+                return "FIFO36_72";
             else
-                fifo_mode := "FIFO36";
+                return "FIFO36";
             end if;
         else
-            if (fifo_width = 36) then
-                fifo_mode := "FIFO18_36";
+            if (fifo_width > 18 and fifo_width <= 36) then
+                return "FIFO18_36";
             else
-                fifo_mode := "FIFO18";
+                return "FIFO18";
             end if;
         end if;
-        return fifo_mode;
     end function;
 
     -- Determine DATA_WIDTH FIFO generic based on desired top-level FIFO width. The DATA_WIDTH
@@ -104,14 +133,38 @@ architecture structural of fifo_sync is
                 if fifo_size = "36Kb" then
                     data_width := 72;
                 else
-                    print_error("FIFO width cannot exceed 36 for FIFO18E1");
+                    print_failure("FIFO width cannot exceed 36 for FIFO18E1");
                     data_width := 0;
                 end if;
             when others     =>
-                print_error("FIFO width cannot exceed 72 for FIFO36E1 or 36 for FIFO18E1");
+                print_failure("FIFO width cannot exceed 72 for FIFO36E1 or 36 for FIFO18E1");
                 data_width := 0;
         end case;
         return data_width;
+    end function;
+
+    -- Returns the width of the input and output data port to the FIFO primitive
+    function get_data_port_width(
+        fifo_size : in string
+    ) return natural is
+    begin
+        if (FIFO_SIZE = "36Kb") then
+            return 64;
+        else
+            return 32;
+        end if;
+    end function;
+
+    -- Returns the width of the input and output parity port to the FIFO primitive
+    function get_parity_port_width(
+        fifo_size : in string
+    ) return natural is
+    begin
+        if (FIFO_SIZE = "36Kb") then
+            return 8;
+        else
+            return 4;
+        end if;
     end function;
 
     -- Determines the number of parity bits required to represent FIFO_WIDTH bits at the input to
@@ -161,12 +214,12 @@ architecture structural of fifo_sync is
     -- port will actually be used (e.g., DATA_WIDTH = 4 with FIFO_SIZE = 36Kb will only use 4 of the
     -- available 64-bits on the data bus).  The parity port is treated similarly, but for many
     -- desired FIFO_WIDTH values will not be used.
-    constant DATA_PORT_WIDTH        : natural   := 64 when (FIFO_SIZE = "36Kb") else 32;
-    constant PARITY_PORT_WIDTH      : natural   := 8 when (FIFO_SIZE = "36Kb") else 4;
+    constant DATA_PORT_WIDTH        : natural   := get_data_port_width(FIFO_SIZE);
+    constant PARITY_PORT_WIDTH      : natural   := get_parity_port_width(FIFO_SIZE);
 
     -- Number of actual bits of parity required to represent FIFO_WIDTH bits. If zero, no parity is
     -- required
-    constant PARITY_WIDTH           : natural   := get_parity_bits(FIFO_WIDTH);
+    constant PARITY_WIDTH           : natural   := get_parity_width(FIFO_WIDTH);
 
     -- Number of clocks to hold the FIFO reset past the deassertion of the external reset. Xilinx
     -- FIFO primitives have very specific requirements for reset (which are ignored by everyone,
@@ -196,22 +249,43 @@ begin
     -- configured appropriately.
 
     -- Assert FIFO size was provided correctly
-    assert (FIFO_SIZE = "16Kb" or FIFO_SIZE = "36Kb")
+    assert (FIFO_SIZE = "18Kb" or FIFO_SIZE = "36Kb")
         report "Error: Invalid FIFO_SIZE supplied. " &
-            "Desired FIFO primitive must be '18Kb' or '36Kb'."
+            "Desired FIFO primitive must be 18Kb or 36Kb."
         severity error;
 
-    -- Check that the desired FIFO_WIDTH is correct for the indicated FIFO primitives
-    assert (FIFO_WIDTH > 0 and FIFO_WIDTH <= 72 and FIFO_SIZE = "36Kb")
+    -- Different assertions depending upon the FIFO primitive in use
+    g_asserts: if (FIFO_SIZE = "36Kb") generate
+    begin
+        assert(FIFO_WIDTH > 0 and FIFO_WIDTH <= 72)
         report "Error: Invalid FIFO_WIDTH supplied. " &
-            "Desired FIFO width must be between 1 and 72-bits for 36Kb or 1 and 36-bits for 18Kb"
+            "Desired FIFO width must be between 1 and 72-bits for 36Kb"
         severity error;
-    assert (FIFO_WIDTH > 0 and FIFO_WIDTH <= 36 and FIFO_SIZE = "18Kb")
+    else generate
+        assert (FIFO_WIDTH > 0 and FIFO_WIDTH <= 36)
         report "Error: Invalid FIFO_WIDTH supplied. " &
-            "Desired FIFO width must be between 1 and 72-bits for 36Kb or 1 and 36-bits for 18Kb"
+            "Desired FIFO width must be between 1 and 36-bits for 36Kb"
         severity error;
+    end generate g_asserts;
 
     ready       <= fifo_rst;
+
+    process
+    begin
+        if (DEBUG = true) then
+            print_debug_info(
+                DEVICE,
+                FIFO_WIDTH, 
+                FIFO_SIZE, 
+                DO_REG, 
+                FIFO_MODE, 
+                DATA_WIDTH, 
+                DATA_PORT_WIDTH, 
+                PARITY_PORT_WIDTH
+            );
+        end if;
+        wait;
+    end process;
 
     -- Per the 7-Series Memory Resources User Guide (UG473) section 'FIFO Operations', the
     -- asynchronous FIFO reset should be held high for five read and write clock cycles to ensure
@@ -254,27 +328,27 @@ begin
     -- This is where the FIFO_SYNC_MACRO from the Xilinx UNIMACRO simulation library is wrong
     -- and inadvertently holds the output register in reset when DO_REG is set.
     regce           <= '1' when (DO_REG = 1) else '0';
-    regrst          <= '1' when (DO_REG = 0) else '1';
+    regrst          <= '0' when (DO_REG = 1) else '1';
 
     -- There are three widths here and for the sake of my own sanity in the future, it makes sense to summarize them
     -- here:
     --
     -- FIFO_WIDTH - The physical port width of the desired FIFO at the top of the module
-    -- DATA_WIDTH - The horribly named generic to the FIFO primitive
+    -- DATA_PORT_WIDTH - The width of the actual port to the FIFO primitive
     -- PARITY_WIDTH - The number of parity bits actually used for a specific FIFO_WIDTH value
     g_fifo_wr: if (PARITY_WIDTH > 0) generate
     begin
-        fifo_wr_data((DATA_WIDTH - 1) downto 0)         <= wr_data((DATA_WIDTH - 1) downto 0);
-        fifo_wr_parity((PARITY_WIDTH - 1) downto 0)     <= wr_data((FIFO_WIDTH - 1) downto DATA_WIDTH)
-    else
+        fifo_wr_data((DATA_PORT_WIDTH - 1) downto 0)    <= wr_data((DATA_PORT_WIDTH - 1) downto 0);
+        fifo_wr_parity((PARITY_WIDTH - 1) downto 0)     <= wr_data((FIFO_WIDTH - 1) downto DATA_PORT_WIDTH);
+    else generate
         fifo_wr_data((FIFO_WIDTH - 1) downto 0)         <= wr_data;
         fifo_wr_parity                                  <= (others=>'0'); 
     end generate g_fifo_wr;
 
     g_fifo_rd: if (PARITY_WIDTH > 0) generate
     begin
-        rd_data             <= fifo_rd_parity((PARITY_WIDTH - 1) downto 0) & fifo_rd_data((DATA_WIDTH - 1) downto 0);
-    else
+        rd_data             <= fifo_rd_parity((PARITY_WIDTH - 1) downto 0) & fifo_rd_data((DATA_PORT_WIDTH - 1) downto 0);
+    else generate
         rd_data             <= fifo_rd_data((FIFO_WIDTH - 1) downto 0);
     end generate g_fifo_rd;
 
