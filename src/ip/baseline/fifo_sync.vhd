@@ -26,9 +26,9 @@ entity fifo_sync is
         --    5 - 9   |   36Kb    |    8       |   4096
         --   10 - 18  |   18Kb    |    16      |   1024
         --   10 - 18  |   36Kb    |    16      |   2048
-        --   19 - 36  |   18Kb    |    32      |   512 
+        --   19 - 36  |   18Kb    |    32      |   512
         --   19 - 36  |   36Kb    |    32      |   1024
-        --   36 - 72  |   36Kb    |    64      |   512 
+        --   36 - 72  |   36Kb    |    64      |   512
         --
         FIFO_SIZE           : string        := "18Kb";
         -- Enable output register
@@ -190,7 +190,7 @@ architecture structural of fifo_sync is
             when 34         => parity_width := 2;
             when 35         => parity_width := 3;
             when 36         => parity_width := 4;
-            -- For 37-64 use 64-bit data width, no parity
+            -- For 36-64 use 64-bit data width, no parity
             when 65	        => parity_width := 1;
             when 66	        => parity_width := 2;
             when 67	        => parity_width := 3;
@@ -248,26 +248,30 @@ begin
     -- size.  Rather than checking in every function for every combination of generics, we instead
     -- perform assertions here and then charge ahead with the knowledge the instance has been
     -- configured appropriately.
-
     -- Assert FIFO size was provided correctly
+    process begin
     assert (FIFO_SIZE = "18Kb" or FIFO_SIZE = "36Kb")
         report "Error: Invalid FIFO_SIZE supplied. " &
             "Desired FIFO primitive must be 18Kb or 36Kb."
         severity error;
+        wait;
+    end process;
 
     -- Different assertions depending upon the FIFO primitive in use
-    g_asserts: if (FIFO_SIZE = "36Kb") generate
+    g_asserts_36kb: if (FIFO_SIZE = "36Kb") generate
     begin
         assert(FIFO_WIDTH > 0 and FIFO_WIDTH <= 72)
         report "Error: Invalid FIFO_WIDTH supplied. " &
             "Desired FIFO width must be between 1 and 72-bits for 36Kb"
         severity error;
-    else generate
+    end generate g_asserts_36kb;
+
+    g_asserts_18kb: if (FIFO_SIZE = "18Kb") generate
         assert (FIFO_WIDTH > 0 and FIFO_WIDTH <= 36)
         report "Error: Invalid FIFO_WIDTH supplied. " &
             "Desired FIFO width must be between 1 and 36-bits for 36Kb"
         severity error;
-    end generate g_asserts;
+    end generate g_asserts_18kb;
 
     ready       <= fifo_rst;
 
@@ -276,12 +280,12 @@ begin
         if (DEBUG = true) then
             print_debug_info(
                 DEVICE,
-                FIFO_WIDTH, 
-                FIFO_SIZE, 
-                DO_REG, 
-                FIFO_MODE, 
-                DATA_WIDTH, 
-                DATA_PORT_WIDTH, 
+                FIFO_WIDTH,
+                FIFO_SIZE,
+                DO_REG,
+                FIFO_MODE,
+                DATA_WIDTH,
+                DATA_PORT_WIDTH,
                 PARITY_PORT_WIDTH
             );
         end if;
@@ -343,7 +347,7 @@ begin
         fifo_wr_parity((PARITY_WIDTH - 1) downto 0)     <= wr_data((FIFO_WIDTH - 1) downto DATA_PORT_WIDTH);
     else generate
         fifo_wr_data((FIFO_WIDTH - 1) downto 0)         <= wr_data;
-        fifo_wr_parity                                  <= (others=>'0'); 
+        fifo_wr_parity                                  <= (others=>'0');
     end generate g_fifo_wr;
 
     g_fifo_rd: if (PARITY_WIDTH > 0) generate
@@ -356,9 +360,9 @@ begin
     -- What's that you say?  These don't look like the FIFO primitives you saw in the libraries
     -- guide?  That's because the libraries guide is wrong and apparently the crackhead that wrote
     -- the FIFO wrappers didn't read the source code.  The instantiation templates are not to be
-    -- trusted. You have to read the component definitions!!! 
+    -- trusted. You have to read the component definitions!!!
     g_fifo_7series: if (DEVICE = "7SERIES") and (FIFO_SIZE = "18Kb") generate
-    begin
+
         FIFO18E1_i0: FIFO18E1
         generic map (
             ALMOST_EMPTY_OFFSET         => X"0080",
@@ -400,7 +404,55 @@ begin
             WREN                        => wr_en
         );
 
+    elsif (DEVICE = "7SERIES") and (FIFO_SIZE = "36Kb") generate
+        FIFO36E1_i0: FIFO36E1
+        generic map (
+            ALMOST_FULL_OFFSET          => X"0080",
+            ALMOST_EMPTY_OFFSET         => X"0080",
+            DATA_WIDTH                  => DATA_WIDTH,
+            DO_REG                      => DO_REG,
+            EN_ECC_READ                 => false,
+            EN_ECC_WRITE                => false,
+            EN_SYN                      => true,
+            FIFO_MODE                   => FIFO_MODE,
+            FIRST_WORD_FALL_THROUGH     => false,
+            INIT                        => X"000000000000000000",
+            IS_RDCLK_INVERTED           => '0',
+            IS_RDEN_INVERTED            => '0',
+            IS_RSTREG_INVERTED          => '0',
+            IS_RST_INVERTED             => '0',
+            IS_WRCLK_INVERTED           => '0',
+            IS_WREN_INVERTED            => '0',
+            SIM_DEVICE                  => DEVICE,
+            SRVAL                       => X"000000000000000000"
+        )
+        port map (
+            ALMOSTEMPTY                 => open,
+            ALMOSTFULL                  => open,
+            DBITERR                     => open,
+            DO                          => fifo_rd_data,
+            DOP                         => fifo_rd_parity,
+            ECCPARITY                   => open,
+            EMPTY                       => empty,
+            FULL                        => full,
+            RDCOUNT                     => open,
+            RDERR                       => open,
+            SBITERR                     => open,
+            WRCOUNT                     => open,
+            WRERR                       => open,
+            DI                          => fifo_wr_data,
+            DIP                         => fifo_wr_parity,
+            INJECTDBITERR               => '0',
+            INJECTSBITERR               => '0',
+            RDCLK                       => clk,
+            RDEN                        => rd_en,
+            REGCE                       => regce,
+            RST                         => rst,
+            RSTREG                      => regrst,
+            WRCLK                       => clk,
+            WREN                        => wr_en
+        );
+
     end generate;
 
 end architecture structural;
-

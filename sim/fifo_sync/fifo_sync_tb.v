@@ -3,16 +3,16 @@
 module fifo_sync_tb;
 
     // Parameters for the FIFO
-    localparam DATA_WIDTH = 8;  // Assuming FIFO_WIDTH is 8-bits
-    localparam FIFO_DEPTH = 256;  // Number of words the FIFO can store
+    localparam FIFO_WIDTH = 33;
+    localparam FIFO_SIZE = "36Kb";
 
     // Testbench signals
     reg clk;
     reg rst;
     reg wr_en;
     reg rd_en;
-    reg [DATA_WIDTH-1:0] wr_data;
-    wire [DATA_WIDTH-1:0] rd_data;
+    reg [FIFO_WIDTH-1:0] wr_data;
+    wire [FIFO_WIDTH-1:0] rd_data;
     wire full;
     wire empty;
 
@@ -52,9 +52,9 @@ module fifo_sync_tb;
         @(posedge clk);
 
         // Write data into the FIFO
-        write_to_fifo(8'hA5);
-        write_to_fifo(8'h3C);
-        write_to_fifo(8'h7E);
+        write_to_fifo;
+        write_to_fifo;
+        write_to_fifo;
 
         // Read data from the FIFO
         #30;
@@ -67,10 +67,15 @@ module fifo_sync_tb;
     end
 
     // Task to write data to the FIFO
-    task write_to_fifo(input [DATA_WIDTH-1:0] data);
+    task write_to_fifo;
+      // Use 96 bits and then slice it down to whatever the FIFO_WIDTH is
+      reg [95:0] random_data;
         begin
+            random_data[95:64] = $random;
+            random_data[63:32] = $random;
+            random_data[31:0]  = $random;
             @(posedge clk);
-            wr_data = data;
+            wr_data = random_data[FIFO_WIDTH-1:0];
             wr_en = 1;
             @(posedge clk);
             wr_en = 0;
@@ -90,9 +95,10 @@ module fifo_sync_tb;
   // Instantiate the FIFO Sync Module
   fifo_sync #(
       .DEVICE		    ("7SERIES"),
-      .FIFO_WIDTH		(8),
-      .FIFO_SIZE		("18Kb"),
-      .DO_REG		    (0)
+      .FIFO_WIDTH		(FIFO_WIDTH),
+      .FIFO_SIZE		(FIFO_SIZE),
+      .DO_REG		    (1),
+      .DEBUG        (1'b1)
   ) uut 		(
       .clk		      (clk),
       .rst		      (rst),
