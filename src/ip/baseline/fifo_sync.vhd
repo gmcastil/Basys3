@@ -191,14 +191,14 @@ architecture structural of fifo_sync is
             when 35         => parity_width := 3;
             when 36         => parity_width := 4;
             -- For 36-64 use 64-bit data width, no parity
-            when 65	        => parity_width := 1;
-            when 66	        => parity_width := 2;
-            when 67	        => parity_width := 3;
-            when 68	        => parity_width := 4;
-            when 69	        => parity_width := 5;
-            when 70	        => parity_width := 6;
-            when 71	        => parity_width := 7;
-            when 72	        => parity_width := 8;
+            when 65         => parity_width := 1;
+            when 66         => parity_width := 2;
+            when 67         => parity_width := 3;
+            when 68         => parity_width := 4;
+            when 69         => parity_width := 5;
+            when 70         => parity_width := 6;
+            when 71         => parity_width := 7;
+            when 72         => parity_width := 8;
             -- For the indicated ranges, no parity bits are used
             when others     => parity_width := 0;
         end case;
