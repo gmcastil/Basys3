@@ -9,6 +9,7 @@ entity fifo_sync is
     generic (
         -- Support for 7SERIES and ULTRASCALE devices
         DEVICE              : string        := "7SERIES";
+
         -- Width of the input and output FIFO data ports at the top level of the entity and can be
         -- 1-36 when selecting 18Kb FIFO primitive and 1-72 for 36Kb primitives
         FIFO_WIDTH          : natural       := 8;
@@ -59,43 +60,35 @@ architecture structural of fifo_sync is
         severity error;
     end procedure;
 
-    -- Determine FIFO mode value based on the desired user FIFO size and FIFO width. Also checks to
-    -- see that the FIFO_SIZE is a legitimate value (other functions all assume the user has
-    -- provided the correct FIFO_SIZE string).
+    -- Determine FIFO mode value based on the desired user FIFO size and FIFO width.
     function get_fifo_mode(
         fifo_size   : in string;
         fifo_width  : in natural
     ) return string is
-        variable fifo_mode  : string;
+        variable fifo_mode : string(1 to 9);
     begin
-        if (fifo_size = "18Kb") then
-            if (fifo_width > 36) then
-                print_error("FIFO width cannot exceed 36 for FIFO18E1");
-                fifo_mode := "none";
-            elsif (fifo_width = 36) then
-                fifo_mode := "FIFO18_36";
-            else
-                fifo_mode := "FIFO18";
-            end if;
-        elsif (fifo_size = "36Kb") then
-            if (fifo_width > 72) then
-                print_error("FIFO width cannot exceed 72 for FIFO36E1");
-                fifo_mode := "none";
-            elsif (fifo_width = 72) then
+        if (fifo_size = "36Kb") then
+            if (fifo_width = 72) then
                 fifo_mode := "FIFO36_72";
             else
                 fifo_mode := "FIFO36";
             end if;
         else
-            print_error("FIFO size must be either 18Kb or 36Kb");
-            fifo_mode := "";
+            if (fifo_width = 36) then
+                fifo_mode := "FIFO18_36";
+            else
+                fifo_mode := "FIFO18";
+            end if;
         end if;
         return fifo_mode;
     end function;
 
-    -- Determine DATA_WIDTH FIFO generic based on desired top-level FIFO width. The DATA WIDTH
-    -- generic to the FIFO primitive is the number of data and parity bits that will be interpreted
-    -- as data
+    -- Determine DATA_WIDTH FIFO generic based on desired top-level FIFO width. The DATA_WIDTH
+    -- generic to the FIFO primitives fundamentally determines the width that the BRAM should be
+    -- configured to operate at.  This is why FIFO depth is dependent upon the choice of this
+    -- generic. This is not entirely clear from the documentation. The Xilinx generic name is
+    -- terrible - it should really be called the BRAM_DATA_WIDTH or something like that, but to
+    -- avoid even more confusion, I'm sticking with the nomenclature that they use.
     function get_data_width(
         fifo_size   : in string;
         fifo_width  : in natural
@@ -107,7 +100,7 @@ architecture structural of fifo_sync is
             when 5 to 9     => data_width := 9;
             when 10 to 18   => data_width := 18;
             when 19 to 36   => data_width := 36;
-            when 37 to 72   =>
+            when 37 to 72   => data_width := 72;
                 if fifo_size = "36Kb" then
                     data_width := 72;
                 else
@@ -121,76 +114,63 @@ architecture structural of fifo_sync is
         return data_width;
     end function;
 
-    -- Determines the number of bits from the data port that are used as data
-    function get_eff_data_width(
-        fifo_size   : in string;
+    -- Determines the number of parity bits required to represent FIFO_WIDTH bits at the input to
+    -- the FIFO primitive.  If the value is zero, then no parity is required. This function
+    -- implicitly determines whether or not FIFO_WIDTH is such that we only need to use the data
+    -- port of the FIFO primitive or whether parity is required AND if required, how many bits are
+    -- required.  For comparison purposes, the Xilinx UNIMACRO library has a separate function to
+    -- determine if a particular width requires data or both data and parity bits.
+    function get_parity_width(
         fifo_width  : in natural
     ) return natural is
-        variable eff_data_width
+        variable parity_width : natural;
     begin
         case fifo_width is
-            when 0 to 4     => eff_data_width := 4;
-            when 5 to 9     => eff_data_width := 8;
-            when 10 to 18   => eff_data_width := 16;
-            when 19 to 36   => eff_data_width := 32;
-            when 37 to 72   =>
-                if (fifo_size = "36Kb") then
-                    eff_data_width := 64;
-                else
-                    print_error("FIFO width cannot exceed 36 for FIFO18E1");
-                    eff_data_width := 0;
-                end if;
-            when others     =>
-                print_error("FIFO width cannot exceed 72 for FIFO36E1 or 36 for FIFO18E1");
-                eff_data_width := 0;
+            -- For 0-4 use 4-bit data width, no parity
+            -- For 5-8 use 8-bit data width, no parity
+            when 9          => parity_width := 1;
+            -- For 10-16 use 16-bit data width, no parity
+            when 17         => parity_width := 1;
+            when 18         => parity_width := 2;
+            -- For 19-32 use 32-bit data width, no parity
+            when 33         => parity_width := 1;
+            when 34         => parity_width := 2;
+            when 35         => parity_width := 3;
+            -- For 36-64 use 64-bit data width, no parity
+            when 65	        => parity_width := 1;
+            when 66	        => parity_width := 2;
+            when 67	        => parity_width := 3;
+            when 68	        => parity_width := 4;
+            when 69	        => parity_width := 5;
+            when 70	        => parity_width := 6;
+            when 71	        => parity_width := 7;
+            when 72	        => parity_width := 8;
+            -- For the indicated ranges, no parity bits are used
+            when others     => parity_width := 0;
         end case;
-        return eff_data_width;
+        return parity_width;
     end function;
 
-    -- The reason that we dont use 10 bits out of a 16-bit data bus is because that would kill the
-    -- depth.  Instead, we use an 8-bit data bus and the 2 bits of parity. This is a bit of a drag
-    -- for things like a 19-bit bus, where you have to use the 32-bit data port (which nerfs the
-    -- depth) and then only use the bottom 16-bits of it and then 
-    --
-    -- Determines the number of bits from the parity port that are used as data
-    function get_eff_parity_width(
-        fifo_size   : in string;
-        fifo_width  : in natural
-    ) return natural is
-        variable eff_parity_width
-    begin
-        case fifo_width is
-            when 0 to 4     => eff_parity_width := 0;
-            when 5 to 9     => eff_parity_width := 1;
-            when 10 to 18   => eff_parity_width := 2;
-            when 19 to 36   => eff parity_width := 4;
-            when 37 to 72   =>
-                if (fifo_size = "36Kb") then
-                    eff_parity_width := 8;
-                else
-                    print_error("FIFO width cannot exceed 36 for FIFO18E1");
-                    eff_parity_width := 0;
-                end if;
-            when others     =>
-                print_error("FIFO width cannot exceed 72 for FIFO36E1 or 36 for FIFO18E1");
-                eff_parity_width := 0;
-        end case
-        return eff_parity_width;
-    end function;
-
-
+    -- FIFO18 and FIFO36 generics (see UG953 for details)
     constant FIFO_MODE              : string    := get_fifo_mode(FIFO_SIZE, FIFO_WIDTH);
     constant DATA_WIDTH             : natural   := get_data_width(FIFO_SIZE, FIFO_WIDTH);
 
-    -- Actual physical data and parity port widths to the FIFO primitive
+    -- Actual physical data and parity port widths to the FIFO primitive - these are fixed at either
+    -- of the two sizes based upon the FIFO primitive.  However, based upon the BRAM configuration
+    -- which is determined by the misleadingly named DATA_WIDTH generic, only a subset of the data
+    -- port will actually be used (e.g., DATA_WIDTH = 4 with FIFO_SIZE = 36Kb will only use 4 of the
+    -- available 64-bits on the data bus).  The parity port is treated similarly, but for many
+    -- desired FIFO_WIDTH values will not be used.
     constant DATA_PORT_WIDTH        : natural   := 64 when (FIFO_SIZE = "36Kb") else 32;
     constant PARITY_PORT_WIDTH      : natural   := 8 when (FIFO_SIZE = "36Kb") else 4;
 
-    -- Maximum number of bits that can be used from the data and parity ports of the FIFO primitive
-    constant EFF_DATA_PORT_WIDTH    : natural   := get_eff_data_width(FIFO_WIDTH);
-    constant EFF_PARITY_PORT_WIDTH  : natural   := get_eff_parity_width(FIFO_WIDTH);
+    -- Number of actual bits of parity required to represent FIFO_WIDTH bits. If zero, no parity is
+    -- required
+    constant PARITY_WIDTH           : natural   := get_parity_bits(FIFO_WIDTH);
 
-    -- Number of clocks to hold the FIFO reset past the deassertion of the external reset.
+    -- Number of clocks to hold the FIFO reset past the deassertion of the external reset. Xilinx
+    -- FIFO primitives have very specific requirements for reset (which are ignored by everyone,
+    -- hence newer macros that do it transparently). See 'FIFO Operations' in UG473 for details.
     constant RST_HOLD_CNT           : unsigned(3 downto 0) := x"5";
 
     signal fifo_rst                 : std_logic := '1';
@@ -200,33 +180,36 @@ architecture structural of fifo_sync is
     signal regce                    : std_logic;
     signal regrst                   : std_logic;
 
-    -- FIFO read and write data port widths are more complicated than just wiring up module ports
-
-    -- The FIFO primitives use the DATA_WIDTH generic to determine how deep a FIFO they can
-    -- construct (probably by using the underlying BRAM more efficiently).  This is why we don't
-    -- just concatenate the two buses together as a 36-bit or 72-bit data, downsize to whatever our
-    -- desired width is, and then slice accordingly; it would affect the desired FIFO depth.  So,
-    -- for a given top-level desired FIFO width, we need to calculate the actual number of bits to
-    -- use from the input and output data ports (which are fixed at either 32 or 64-bits).  That
-    -- choice for the actual number of data bits also determines the number of bits of the parity
-    -- port to use.
-    --
-    -- So, as an example, imagine a desired FIFO_WIDTH of 9-bits and a FIFO_SIZE of "18Kb". This
-    -- would be implemented with a DATA_WIDTH of 8, and then we would use 8 of the 32-bits of the
-    -- FIFO data bus and 1 bit from the 4-bit parity bus.  Or, if we were using a "36Kb" FIFO_SIZE
-    -- we would use the same dimensions, but out of a 64 and 8-bit data and parity bus.  This is
-    -- further complicated in one way, which is the FIFO_MODE, which needs to be set to different
-    -- values when we are at the upper end of the capacity (e.g., FIFO18_36 for 36-bits and
-    -- FIFO36_72 for 72-bits).
-    --
     -- These are the actual FIFO input signals, but we will need to populate them appropriately
     -- later based on the effective data and parity port widths.
-    signal fifo_wr_data         : std_logic_vector((DATA_PORT_WIDTH - 1) downto 0);
-    signal fifo_wr_parity       : std_logic_vector((PARITY_PORT_WIDTH - 1) downto 0);
-    signal fifo_rd_data         : std_logic_vector((DATA_PORT_WIDTH - 1) downto 0);
-    signal fifo_rd_parity       : std_logic_vector((PARITY_PORT_WIDTH - 1) downto 0);
+    signal fifo_wr_data             : std_logic_vector((DATA_PORT_WIDTH - 1) downto 0);
+    signal fifo_wr_parity           : std_logic_vector((PARITY_PORT_WIDTH - 1) downto 0);
+    signal fifo_rd_data             : std_logic_vector((DATA_PORT_WIDTH - 1) downto 0);
+    signal fifo_rd_parity           : std_logic_vector((PARITY_PORT_WIDTH - 1) downto 0);
 
 begin
+
+    -- In general, we assume that all generics are provided with acceptable values to make functions
+    -- simpler and easier to understand. Conditionals are all written assuming 18Kb is the default
+    -- size.  Rather than checking in every function for every combination of generics, we instead
+    -- perform assertions here and then charge ahead with the knowledge the instance has been
+    -- configured appropriately.
+
+    -- Assert FIFO size was provided correctly
+    assert (FIFO_SIZE = "16Kb" or FIFO_SIZE = "36Kb")
+        report "Error: Invalid FIFO_SIZE supplied. " &
+            "Desired FIFO primitive must be '18Kb' or '36Kb'."
+        severity error;
+
+    -- Check that the desired FIFO_WIDTH is correct for the indicated FIFO primitives
+    assert (FIFO_WIDTH > 0 and FIFO_WIDTH <= 72 and FIFO_SIZE = "36Kb")
+        report "Error: Invalid FIFO_WIDTH supplied. " &
+            "Desired FIFO width must be between 1 and 72-bits for 36Kb or 1 and 36-bits for 18Kb"
+        severity error;
+    assert (FIFO_WIDTH > 0 and FIFO_WIDTH <= 36 and FIFO_SIZE = "18Kb")
+        report "Error: Invalid FIFO_WIDTH supplied. " &
+            "Desired FIFO width must be between 1 and 72-bits for 36Kb or 1 and 36-bits for 18Kb"
+        severity error;
 
     ready       <= fifo_rst;
 
@@ -273,9 +256,31 @@ begin
     regce           <= '1' when (DO_REG = 1) else '0';
     regrst          <= '1' when (DO_REG = 0) else '1';
 
+    -- There are three widths here and for the sake of my own sanity in the future, it makes sense to summarize them
+    -- here:
+    --
+    -- FIFO_WIDTH - The physical port width of the desired FIFO at the top of the module
+    -- DATA_WIDTH - The horribly named generic to the FIFO primitive
+    -- PARITY_WIDTH - The number of parity bits actually used for a specific FIFO_WIDTH value
+    g_fifo_wr: if (PARITY_WIDTH > 0) generate
+    begin
+        fifo_wr_data((DATA_WIDTH - 1) downto 0)         <= wr_data((DATA_WIDTH - 1) downto 0);
+        fifo_wr_parity((PARITY_WIDTH - 1) downto 0)     <= wr_data((FIFO_WIDTH - 1) downto DATA_WIDTH)
+    else
+        fifo_wr_data((FIFO_WIDTH - 1) downto 0)         <= wr_data;
+        fifo_wr_parity                                  <= (others=>'0'); 
+    end generate g_fifo_wr;
+
+    g_fifo_rd: if (PARITY_WIDTH > 0) generate
+    begin
+        rd_data             <= fifo_rd_parity((PARITY_WIDTH - 1) downto 0) & fifo_rd_data((DATA_WIDTH - 1) downto 0);
+    else
+        rd_data             <= fifo_rd_data((FIFO_WIDTH - 1) downto 0);
+    end generate g_fifo_rd;
+
     -- What's that you say?  These don't look like the FIFO primitives you saw in the libraries
-    -- guide?  That's because the libraries guide is wrong and apparently the crackheads that wrote
-    -- the FIFO wrappers don't read their source code.  The instantiation templates are not to be
+    -- guide?  That's because the libraries guide is wrong and apparently the crackhead that wrote
+    -- the FIFO wrappers didn't read the source code.  The instantiation templates are not to be
     -- trusted. You have to read the component definitions!!! 
     g_fifo_7series: if (DEVICE = "7SERIES") and (FIFO_SIZE = "18Kb") generate
     begin
