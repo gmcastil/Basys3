@@ -3,8 +3,8 @@
 module fifo_sync_tb;
 
     // Parameters for the FIFO
-    localparam FIFO_WIDTH = 33;
-    localparam FIFO_SIZE = "36Kb";
+    localparam FIFO_WIDTH = 32;
+    localparam FIFO_SIZE = "18Kb";
 
     // Testbench signals
     reg clk;
