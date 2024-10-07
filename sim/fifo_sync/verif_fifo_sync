@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Constants
+SIM_DIR="./"
+IP_DIR="../../src/ip/baseline"
+WORK="work"
+
+DEVICE_LIST=("7SERIES")
+
+FIFO18_WIDTH_LIST=($(seq -s' ' 1 36))
+FIFO36_WIDTH_LIST=($(seq -s' ' 1 72))
+
+LOG_FILE="test_results.log"
+
+log_test_pass() {
+    local device
+    local fifo_width
+    local fifo_size
+    device="${1}"
+    fifo_width="${2}"
+    fifo_size="${3}"
+    printf 'PASS: DEVICE=%s, FIFO_WIDTH=%d, FIFO_SIZE=%s\n' \
+        "${device}" "${fifo_width}" "${fifo_size}" >> "${LOG_FILE}"
+
+}
+
+log_test_fail() {
+    local device
+    local fifo_width
+    local fifo_size
+    device="${1}"
+    fifo_width="${2}"
+    fifo_size="${3}"
+    printf 'FAIL: DEVICE=%s, FIFO_WIDTH=%d, FIFO_SIZE=%s\n' \
+        "${device}" "${fifo_width}" "${fifo_size}" >> "${LOG_FILE}"
+
+}
+
+run_test() {
+    local device
+    local fifo_width
+    local fifo_size
+
+    device="${1}"
+    fifo_width="${2}"
+    fifo_size="${3}"
+
+    # Compile the testbench and the DUT
+    vlog -quiet -work "${WORK}" -sv "${SIM_DIR}/fifo_sync_tb.v"
+    vcom -quiet -autoorderquiet -work "${WORK}" "${IP_DIR}/fifo_sync.vhd"
+
+    # shellcheck disable=SC2181
+    vsim -c \
+        -quiet \
+        -gDEVICE="${device}" \
+        -gFIFO_WIDTH="${fifo_width}" \
+        -gFIFO_SIZE="${fifo_size}" \
+        -gDEBUG=0 \
+        -do 'run -all; quit' "${WORK}.fifo_sync_tb" >/dev/null
+
+    if [[ "$?" -ne 0 ]]; then
+        log_test_fail "${device}" "${fifo_width}" "${fifo_size}"
+        return 1
+    else
+        log_test_pass "${device}" "${fifo_width}" "${fifo_size}"
+        return 0
+    fi
+}
+
+if [[ -d "${WORK}" ]]; then
+    rm -rf "${WORK}"
+fi
+
+vlib -quiet "${WORK}"
+vmap -quiet work "${WORK}"
+
+# Test 7-Series 18Kb FIFO configuration
+printf 'Status: Running tests...' >&1
+for device in "${DEVICE_LIST[@]}"; do
+    # Test 18Kb FIFO
+    for fifo_width in "${FIFO18_WIDTH_LIST[@]}"; do
+        if ! run_test "${device}" "${fifo_width}" "18Kb"; then
+            printf 'X' >&1
+        else
+            printf '.' >&1
+        fi
+    done
+    # Test 36Kb FIFO
+    for fifo_width in "${FIFO36_WIDTH_LIST[@]}"; do
+        if ! run_test "${device}" "${fifo_width}" "36Kb"; then
+            printf 'X' >&1
+        else
+            printf '.' >&1
+        fi
+    done
+done
+printf 'Done.\n' >&1
+
+

@@ -288,78 +288,34 @@ begin
     -- perform assertions here and then charge ahead with the knowledge the instance has been
     -- configured appropriately.
     -- Assert FIFO size was provided correctly
-    process begin
     assert (FIFO_SIZE = "18Kb" or FIFO_SIZE = "36Kb")
-        report "Error: Invalid FIFO_SIZE supplied. " &
+        report "Invalid FIFO_SIZE supplied. " &
             "Desired FIFO primitive must be 18Kb or 36Kb."
-        severity error;
-        wait;
-    end process;
+        severity failure;
 
     -- Different assertions depending upon the FIFO primitive in use
     g_asserts_36kb: if (FIFO_SIZE = "36Kb") generate
     begin
         assert(FIFO_WIDTH > 0 and FIFO_WIDTH <= 72)
-        report "Error: Invalid FIFO_WIDTH supplied. " &
+        report "Invalid FIFO_WIDTH supplied. " &
             "Desired FIFO width must be between 1 and 72-bits for 36Kb"
-        severity error;
+        severity failure;
     end generate g_asserts_36kb;
 
     g_asserts_18kb: if (FIFO_SIZE = "18Kb") generate
         assert (FIFO_WIDTH > 0 and FIFO_WIDTH <= 36)
-        report "Error: Invalid FIFO_WIDTH supplied. " &
+        report "Invalid FIFO_WIDTH supplied. " &
             "Desired FIFO width must be between 1 and 36-bits for 36Kb"
-        severity error;
+        severity failure;
     end generate g_asserts_18kb;
 
-    ready       <= fifo_rst;
+    -- There's a lot of edge cases in this signal slicing which really sucked to get right, so we
+    -- assert something intelligent about their relationship. This is an obvious relationship now,
+    -- but it wasn't nearly this obvious when I stated this thing.
+    assert FIFO_WIDTH = (USED_PARITY_WIDTH + USED_DATA_WIDTH)
+        report "FIFO_WIDTH != USED_PARITY_WIDTH + USED_DATA_WIDTH"
+        severity failure;
 
-    -- Per the 7-Series Memory Resources User Guide (UG473) section 'FIFO Operations', the
-    -- asynchronous FIFO reset should be held high for five read and write clock cycles to ensure
-    -- all internal states and flags are reset to the correct values.  During reset, the write and
-    -- read enable signals should both be deasserted and remain deasserted until the reset sequence
-    -- is complete.
-    p_fifo_rst: process (clk)
-    begin
-        if rising_edge(clk) then
-            if (rst = '1') then
-                fifo_rst            <= '1';
-                fifo_rst_cnt        <= RST_HOLD_CNT;
-           else
-                if fifo_rst = '1' then
-                    -- A FIFO reset sequence is complete when the write and read enable signals
-                    -- have been deasserted prior to assertion of a reset and have remained deasserted
-                    -- for RST_HOLD_CNT clocks
-                    if wr_en = '0' and rd_en = '0' and fifo_rst_cnt = 0 then
-                        fifo_rst            <= '0';
-                    else
-                        fifo_rst            <= '1';
-                    end if;
-
-                    -- If either read or write enable are asserted during the reset hold sequence, we
-                    -- deassert the reset that we were trying to perform and start all over again.
-                    if wr_en = '1' or rd_en = '1' then
-                        fifo_rst_cnt        <= RST_HOLD_CNT;
-                    else
-                        fifo_rst_cnt        <= fifo_rst_cnt - 1;
-                    end if;
-
-                else
-                    fifo_rst            <= '0';
-                    fifo_rst_cnt        <= RST_HOLD_CNT;
-                end if;
-            end if;
-        end if;
-    end process p_fifo_rst;
-
-    -- This is where the FIFO_SYNC_MACRO from the Xilinx UNIMACRO simulation library was wrong
-    -- and inadvertently holds the output register in reset when DO_REG is set.
-    regce           <= '1' when (DO_REG = 1) else '0';
-    regrst          <= '0' when (DO_REG = 1) else '1';
-
-    -- There's a lot of edge cases in this signal slicing which really sucked to get right.
-    -- Thankfully, this should all fail to compile if the wrong values are used or there is a bug. I
-    -- think.
     g_fifo_wr: if (USED_PARITY_WIDTH > 0) generate
         fifo_wr_data((USED_DATA_WIDTH - 1) downto 0)        <= wr_data((USED_DATA_WIDTH - 1) downto 0);
         fifo_wr_parity((USED_PARITY_WIDTH - 1) downto 0)    <= wr_data((FIFO_WIDTH - 1) downto USED_DATA_WIDTH);
@@ -374,102 +330,151 @@ begin
         rd_data     <= fifo_rd_data((FIFO_WIDTH - 1) downto 0);
     end generate g_fifo_rd;
 
+    -- This is where the FIFO_SYNC_MACRO from the Xilinx UNIMACRO simulation library was wrong
+    -- and inadvertently holds the output register in reset when DO_REG is set.
+    regce           <= '1' when (DO_REG = 1) else '0';
+    regrst          <= '0' when (DO_REG = 1) else '1';
+
     -- What's that you say?  These don't look like the FIFO primitives you saw in the libraries
     -- guide?  That's because the libraries guide is wrong and apparently the crackhead that wrote
     -- the FIFO wrappers didn't read the source code.  The instantiation templates are not to be
     -- trusted. You have to read the component definitions!!!
-    g_fifo_7series: if (DEVICE = "7SERIES") and (FIFO_SIZE = "18Kb") generate
+    g_fifo_7series: if (DEVICE = "7SERIES") generate
+    begin
+        -- For 7-series, we carefully curate the reset signal and then use its deassertion as a
+        -- ready indicator (for Ultrascale this will likely be different)
+        ready       <= fifo_rst;
 
-        FIFO18E1_i0: FIFO18E1
-        generic map (
-            ALMOST_EMPTY_OFFSET         => X"0080",
-            ALMOST_FULL_OFFSET          => X"0080",
-            DATA_WIDTH                  => DATA_WIDTH,
-            DO_REG                      => DO_REG,
-            EN_SYN                      => true,
-            FIFO_MODE                   => FIFO_MODE,
-            FIRST_WORD_FALL_THROUGH     => false,
-            INIT                        => X"000000000",
-            IS_RDCLK_INVERTED           => '0',
-            IS_RDEN_INVERTED            => '0',
-            IS_RSTREG_INVERTED          => '0',
-            IS_RST_INVERTED             => '0',
-            IS_WRCLK_INVERTED           => '0',
-            IS_WREN_INVERTED            => '0',
-            SIM_DEVICE                  => "7SERIES",
-            SRVAL                       => X"000000000"
-        )
-        port map (
-            ALMOSTEMPTY                 => open,
-            ALMOSTFULL                  => open,
-            DO                          => fifo_rd_data,
-            DOP                         => fifo_rd_parity,
-            EMPTY                       => empty,
-            FULL                        => full,
-            RDCOUNT                     => open,
-            RDERR                       => open,
-            WRCOUNT                     => open,
-            WRERR                       => open,
-            DI                          => fifo_wr_data,
-            DIP                         => fifo_wr_parity,
-            RDCLK                       => clk,
-            RDEN                        => rd_en,
-            REGCE                       => regce,
-            RST                         => rst,
-            RSTREG                      => regrst,
-            WRCLK                       => clk,
-            WREN                        => wr_en
-        );
+        -- Per the 7-Series Memory Resources User Guide (UG473) section 'FIFO Operations', the
+        -- asynchronous FIFO reset should be held high for five read and write clock cycles to ensure
+        -- all internal states and flags are reset to the correct values.  During reset, the write and
+        -- read enable signals should both be deasserted and remain deasserted until the reset sequence
+        -- is complete.
+        p_fifo_rst: process (clk)
+        begin
+            if rising_edge(clk) then
+                if (rst = '1') then
+                    fifo_rst            <= '1';
+                    fifo_rst_cnt        <= RST_HOLD_CNT;
+               else
+                    if fifo_rst = '1' then
+                        -- A FIFO reset sequence is complete when the write and read enable signals
+                        -- have been deasserted prior to assertion of a reset and have remained deasserted
+                        -- for RST_HOLD_CNT clocks
+                        if wr_en = '0' and rd_en = '0' and fifo_rst_cnt = 0 then
+                            fifo_rst            <= '0';
+                        else
+                            fifo_rst            <= '1';
+                        end if;
 
-    elsif (DEVICE = "7SERIES") and (FIFO_SIZE = "36Kb") generate
-        FIFO36E1_i0: FIFO36E1
-        generic map (
-            ALMOST_FULL_OFFSET          => X"0080",
-            ALMOST_EMPTY_OFFSET         => X"0080",
-            DATA_WIDTH                  => DATA_WIDTH,
-            DO_REG                      => DO_REG,
-            EN_ECC_READ                 => false,
-            EN_ECC_WRITE                => false,
-            EN_SYN                      => true,
-            FIFO_MODE                   => FIFO_MODE,
-            FIRST_WORD_FALL_THROUGH     => false,
-            INIT                        => X"000000000000000000",
-            IS_RDCLK_INVERTED           => '0',
-            IS_RDEN_INVERTED            => '0',
-            IS_RSTREG_INVERTED          => '0',
-            IS_RST_INVERTED             => '0',
-            IS_WRCLK_INVERTED           => '0',
-            IS_WREN_INVERTED            => '0',
-            SIM_DEVICE                  => DEVICE,
-            SRVAL                       => X"000000000000000000"
-        )
-        port map (
-            ALMOSTEMPTY                 => open,
-            ALMOSTFULL                  => open,
-            DBITERR                     => open,
-            DO                          => fifo_rd_data,
-            DOP                         => fifo_rd_parity,
-            ECCPARITY                   => open,
-            EMPTY                       => empty,
-            FULL                        => full,
-            RDCOUNT                     => open,
-            RDERR                       => open,
-            SBITERR                     => open,
-            WRCOUNT                     => open,
-            WRERR                       => open,
-            DI                          => fifo_wr_data,
-            DIP                         => fifo_wr_parity,
-            INJECTDBITERR               => '0',
-            INJECTSBITERR               => '0',
-            RDCLK                       => clk,
-            RDEN                        => rd_en,
-            REGCE                       => regce,
-            RST                         => rst,
-            RSTREG                      => regrst,
-            WRCLK                       => clk,
-            WREN                        => wr_en
-        );
+                        -- If either read or write enable are asserted during the reset hold sequence, we
+                        -- deassert the reset that we were trying to perform and start all over again.
+                        if wr_en = '1' or rd_en = '1' then
+                            fifo_rst_cnt        <= RST_HOLD_CNT;
+                        else
+                            fifo_rst_cnt        <= fifo_rst_cnt - 1;
+                        end if;
 
+                    else
+                        fifo_rst            <= '0';
+                        fifo_rst_cnt        <= RST_HOLD_CNT;
+                    end if;
+                end if;
+            end if;
+        end process p_fifo_rst;
+
+        -- Now we can actually instantiate the primitives correctly
+        g_fifo_prim: if (FIFO_SIZE = "36Kb") generate
+            FIFO36E1_i0: FIFO36E1
+            generic map (
+                ALMOST_FULL_OFFSET          => X"0080",
+                ALMOST_EMPTY_OFFSET         => X"0080",
+                DATA_WIDTH                  => DATA_WIDTH,
+                DO_REG                      => DO_REG,
+                EN_ECC_READ                 => false,
+                EN_ECC_WRITE                => false,
+                EN_SYN                      => true,
+                FIFO_MODE                   => FIFO_MODE,
+                FIRST_WORD_FALL_THROUGH     => false,
+                INIT                        => X"000000000000000000",
+                IS_RDCLK_INVERTED           => '0',
+                IS_RDEN_INVERTED            => '0',
+                IS_RSTREG_INVERTED          => '0',
+                IS_RST_INVERTED             => '0',
+                IS_WRCLK_INVERTED           => '0',
+                IS_WREN_INVERTED            => '0',
+                SIM_DEVICE                  => DEVICE,
+                SRVAL                       => X"000000000000000000"
+            )
+            port map (
+                ALMOSTEMPTY                 => open,
+                ALMOSTFULL                  => open,
+                DBITERR                     => open,
+                DO                          => fifo_rd_data,
+                DOP                         => fifo_rd_parity,
+                ECCPARITY                   => open,
+                EMPTY                       => empty,
+                FULL                        => full,
+                RDCOUNT                     => open,
+                RDERR                       => open,
+                SBITERR                     => open,
+                WRCOUNT                     => open,
+                WRERR                       => open,
+                DI                          => fifo_wr_data,
+                DIP                         => fifo_wr_parity,
+                INJECTDBITERR               => '0',
+                INJECTSBITERR               => '0',
+                RDCLK                       => clk,
+                RDEN                        => rd_en,
+                REGCE                       => regce,
+                RST                         => rst,
+                RSTREG                      => regrst,
+                WRCLK                       => clk,
+                WREN                        => wr_en
+            );
+
+        elsif (FIFO_SIZE = "18Kb") generate
+            FIFO18E1_i0: FIFO18E1
+            generic map (
+                ALMOST_EMPTY_OFFSET         => X"0080",
+                ALMOST_FULL_OFFSET          => X"0080",
+                DATA_WIDTH                  => DATA_WIDTH,
+                DO_REG                      => DO_REG,
+                EN_SYN                      => true,
+                FIFO_MODE                   => FIFO_MODE,
+                FIRST_WORD_FALL_THROUGH     => false,
+                INIT                        => X"000000000",
+                IS_RDCLK_INVERTED           => '0',
+                IS_RDEN_INVERTED            => '0',
+                IS_RSTREG_INVERTED          => '0',
+                IS_RST_INVERTED             => '0',
+                IS_WRCLK_INVERTED           => '0',
+                IS_WREN_INVERTED            => '0',
+                SIM_DEVICE                  => DEVICE,
+                SRVAL                       => X"000000000"
+            )
+            port map (
+                ALMOSTEMPTY                 => open,
+                ALMOSTFULL                  => open,
+                DO                          => fifo_rd_data,
+                DOP                         => fifo_rd_parity,
+                EMPTY                       => empty,
+                FULL                        => full,
+                RDCOUNT                     => open,
+                RDERR                       => open,
+                WRCOUNT                     => open,
+                WRERR                       => open,
+                DI                          => fifo_wr_data,
+                DIP                         => fifo_wr_parity,
+                RDCLK                       => clk,
+                RDEN                        => rd_en,
+                REGCE                       => regce,
+                RST                         => rst,
+                RSTREG                      => regrst,
+                WRCLK                       => clk,
+                WREN                        => wr_en
+            );
+        end generate g_fifo_prim;
     end generate g_fifo_7series;
 
 end architecture structural;

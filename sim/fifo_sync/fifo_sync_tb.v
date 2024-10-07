@@ -1,10 +1,12 @@
 `timescale 1ns / 1ps
 
-module fifo_sync_tb;
-
-    // Parameters for the FIFO
-    localparam FIFO_WIDTH = 32;
-    localparam FIFO_SIZE = "18Kb";
+module fifo_sync_tb #(
+  parameter string  DEVICE      = "7SERIES",
+  parameter integer FIFO_WIDTH  = 72,
+  parameter string  FIFO_SIZE   = "36Kb",
+  parameter integer DO_REG      = 1,
+  parameter integer DEBUG       = 0
+);
 
     // Testbench signals
     reg clk;
@@ -94,12 +96,13 @@ module fifo_sync_tb;
 
   // Instantiate the FIFO Sync Module
   fifo_sync #(
-      .DEVICE		    ("7SERIES"),
+      .DEVICE		    (DEVICE),
       .FIFO_WIDTH		(FIFO_WIDTH),
       .FIFO_SIZE		(FIFO_SIZE),
-      .DO_REG		    (1),
-      .DEBUG        (1'b1)
-  ) uut 		(
+      .DO_REG		    (DO_REG),
+      .DEBUG        (DEBUG)
+  )
+  fifo_sync_i0 (
       .clk		      (clk),
       .rst		      (rst),
       .wr_en		    (wr_en),
