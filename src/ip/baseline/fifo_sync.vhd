@@ -427,7 +427,7 @@ begin
                 RDCLK                       => clk,
                 RDEN                        => rd_en,
                 REGCE                       => regce,
-                RST                         => rst,
+                RST                         => fifo_rst,
                 RSTREG                      => regrst,
                 WRCLK                       => clk,
                 WREN                        => wr_en
@@ -469,7 +469,7 @@ begin
                 RDCLK                       => clk,
                 RDEN                        => rd_en,
                 REGCE                       => regce,
-                RST                         => rst,
+                RST                         => fifo_rst,
                 RSTREG                      => regrst,
                 WRCLK                       => clk,
                 WREN                        => wr_en
