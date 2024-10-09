@@ -259,6 +259,7 @@ architecture structural of fifo_sync is
     end procedure;
 
     signal fifo_rst                 : std_logic := '1';
+    signal fifo_rst_done            : std_logic := '0';
     signal fifo_rst_cnt             : unsigned(3 downto 0) := RST_HOLD_CNT;
 
     -- Output register clock enable and reset
@@ -343,7 +344,7 @@ begin
     begin
         -- For 7-series, we carefully curate the reset signal and then use its deassertion as a
         -- ready indicator (for Ultrascale this will likely be different)
-        ready       <= fifo_rst;
+        ready       <= fifo_rst_done;
 
         -- Per the 7-Series Memory Resources User Guide (UG473) section 'FIFO Operations', the
         -- asynchronous FIFO reset should be held high for five read and write clock cycles to ensure
@@ -355,6 +356,7 @@ begin
             if rising_edge(clk) then
                 if (rst = '1') then
                     fifo_rst            <= '1';
+                    fifo_rst_done       <= '0';
                     fifo_rst_cnt        <= RST_HOLD_CNT;
                else
                     if fifo_rst = '1' then
@@ -363,8 +365,10 @@ begin
                         -- for RST_HOLD_CNT clocks
                         if wr_en = '0' and rd_en = '0' and fifo_rst_cnt = 0 then
                             fifo_rst            <= '0';
+                            fifo_rst_done       <= '1';
                         else
                             fifo_rst            <= '1';
+                            fifo_rst_done       <= '0';
                         end if;
 
                         -- If either read or write enable are asserted during the reset hold sequence, we

@@ -51,7 +51,7 @@ begin
                     elsif (fifo_rd_valid = '1') then
                         rd_data             <= fifo_rd_data;
                         rd_valid            <= '1';
-                    -- No data in either location to send (could add a tracer here if wanted)
+                    -- No data in either location to send
                     else
                         rd_valid            <= '0';
                     end if;
@@ -71,16 +71,21 @@ begin
                 -- the skid register will always get consumed first when data moves at the output
                 if (skid_valid = '1' and rd_valid = '1' and rd_ready = '1') then
                     skid_valid          <= '0';
-                --When we are still reading from the FIFO, there is already data at the FIFO output and
-                --we are presenting data at the output, we will need to stall
+                -- When we are still reading from the FIFO, there is already data at the FIFO output and
+                -- we are presenting data at the output but the consumer is not ready, we will need to stall
                 elsif (fifo_rd_en = '1' and fifo_rd_valid = '1' and rd_valid = '1' and rd_ready = '0') then
+                    skid_valid          <= '1';
+                    skid_data           <= fifo_rd_data;
+                -- Or, if we are reading from the FIFO and the FIFO goes empty or non-ready
+                elsif (fifo_rd_en = '1' and (fifo_empty = '1' or fifo_ready = '0')) then
                     skid_valid          <= '1';
                     skid_data           <= fifo_rd_data;
                 end if;
 
                 -- Only read from the FIFO when it is ready, non-empty and we have a spot to put the
                 -- data on the next clock cycle
-                if (fifo_ready = '1' and fifo_empty = '0' and ( (fifo_rd_valid = '0' ) or (fifo_rd_valid = '1' and skid_valid = '0') ) ) then
+--                if (fifo_ready = '1' and fifo_empty = '0' and ( (fifo_rd_valid = '0' ) or (fifo_rd_valid = '1' and skid_valid = '0') ) ) then
+                if (fifo_ready = '1' and fifo_empty = '0' and rd_valid = '0') then
                     fifo_rd_en          <= '1';
                 else
                     fifo_rd_en          <= '0';

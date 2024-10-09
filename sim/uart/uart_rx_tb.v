@@ -115,6 +115,7 @@ module uart_rx_tb;
   );
 
   uart #(
+    .DEVICE           ("7SERIES"),
     .CLK_FREQ         (100000000),
     .BAUD_RATE        (115200)
   )
