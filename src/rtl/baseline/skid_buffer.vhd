@@ -82,15 +82,6 @@ begin
                     skid_data           <= fifo_rd_data;
                 end if;
 
-                -- Only read from the FIFO when it is ready, non-empty and we have a spot to put the
-                -- data on the next clock cycle
---                if (fifo_ready = '1' and fifo_empty = '0' and ( (fifo_rd_valid = '0' ) or (fifo_rd_valid = '1' and skid_valid = '0') ) ) then
-                if (fifo_ready = '1' and fifo_empty = '0' and rd_valid = '0') then
-                    fifo_rd_en          <= '1';
-                else
-                    fifo_rd_en          <= '0';
-                end if;
-
                 if (fifo_rd_en = '1') then
                     fifo_rd_valid       <= '1';
                 else
@@ -100,6 +91,12 @@ begin
             end if;
         end if;
     end process;
+
+    -- Only read from the FIFO when it is ready, non-empty and we have a spot to put the
+    -- data on the next clock cycle
+    fifo_rd_en  <= '0' when (fifo_empty = '1' and fifo_rd_en = '1') else
+                   '1' when (fifo_ready = '1' and fifo_empty = '0' and rd_valid = '0') else
+                   '0';
 
 end architecture behavioral;
 
