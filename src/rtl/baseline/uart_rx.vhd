@@ -13,13 +13,19 @@ entity uart_rx is
         clk             : in    std_logic;
         rst             : in    std_logic;
 
+        -- UART received data.  Zero buffering of data is performed by this module. Most normal
+        -- applications would probably want to put a FIFO on this interface.
         uart_rd_data    : out   std_logic_vector(7 downto 0);
         uart_rd_valid   : out   std_logic;
         uart_rd_ready   : in    std_logic;
 
+        -- Number of received frames since reset
         rx_frame_cnt    : out   unsigned(31 downto 0);
+        -- Number of valid frames received when the external client was not
+        -- ready (i.e., dropped frames)
         rx_frame_err    : out   unsigned(31 downto 0);
 
+        -- Should map directly to an input pin
         uart_rxd        : in    std_logic
     );
 
@@ -28,8 +34,9 @@ end entity uart_rx;
 architecture behavioral of uart_rx is
 
     -- Just support 1 start bit, 8 data bigts, no parity, and 1 stop bit for now
-    constant RX_FRAME_LEN           : integer := 10;
+    constant RX_FRAME_LEN           : integer   := 10;
 
+    -- Values for the start and stop bits (not the number of start or stop bits)
     constant RX_START_BIT           : std_logic := '0';
     constant RX_STOP_BIT            : std_logic := '1';
 

@@ -28,6 +28,11 @@ end entity user_core;
 
 architecture structural of user_core is
 
+    attribute MARK_DEBUG    : string;
+    attribute MARK_DEBUG of uart_rd_data        : signal is "true";
+    attribute MARK_DEBUG of uart_rd_valid       : signal is "true";
+    attribute MARK_DEBUG of uart_rd_ready       : signal is "true";
+
 begin
 
     uart_mode                   <= slider_sw(1 downto 0);

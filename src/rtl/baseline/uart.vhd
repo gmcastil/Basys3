@@ -5,12 +5,12 @@ use ieee.numeric_std.all;
 entity uart is
     generic (
         -- Target device
-        DEVICE      : string        := "7SERIES";
+        DEVICE              : string        := "7SERIES";
         -- Input clock frequency
-        CLK_FREQ    : integer       := 100000000;
+        CLK_FREQ            : integer       := 100000000;
         -- Desired baud rate
-        BAUD_RATE   : integer       := 115200;
-        UART_DEBUG  : string        := "false"
+        BAUD_RATE           : integer       := 115200;
+        UART_DEBUG          : string        := "false"
     );
     port (
         clk                 : in    std_logic;
@@ -24,34 +24,6 @@ entity uart is
         uart_wr_valid       : in    std_logic;
         uart_wr_ready       : out   std_logic;
 
-        -- uart_parity_err
-        -- uart_frame_err
-        -- uart_overrun_err
-        --
-        -- uart_cts
-        -- uart_rts
-        --
-        -- uart_rx_busy
-        -- uart_wr_busy
-        --
-        -- uart_break_detect
-        --
-        --
-        -- interrupt out
-
-        -- In hardware loopback mode, the TX and RX function normally (i.e., the data terminal
-        -- equipment sends data to the RX port and can receive data from the TX port) and the
-        -- external write and read interfaces are ignored entirely. This is done for several
-        -- reasons. for reusability purposes, since it allows the loopback functionality to travel
-        -- with the UART core, and second, because it requires no change to user core code to test
-        -- or debug the serial interface.
-        --
-        -- Operational mode:
-        --   00 = normal UART operation
-        --   01 = reserved
-        --   10 = reserved
-        --   11 = reserved
-        --
         uart_mode           : in    std_logic_vector(1 downto 0);
 
         uart_rxd            : in    std_logic;
