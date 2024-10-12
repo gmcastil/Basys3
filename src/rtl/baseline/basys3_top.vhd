@@ -2,6 +2,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 entity basys3_top is
+    generic (
+       UART_DEBUG           : string        := "false"
+   );
     port (
         -- 100MHz external clock
         clk_ext_pad         : in    std_logic;
@@ -123,7 +126,7 @@ begin
     generic map (
         CLK_FREQ            => 100000000,
         BAUD_RATE           => 115200,
-        UART_DEBUG          => "false"
+        UART_DEBUG          => UART_DEBUG
     )
     port map (
         clk                 => clk_100m00,
