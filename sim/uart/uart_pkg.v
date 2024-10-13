@@ -84,7 +84,8 @@ class uart_bfm;
     endtask
 
     // Send a single frame of data (usually a byte) with whatever additional bits
-    // are required based on the UART configuration
+    // are required based on the UART configuration (i.e., depending on how it
+    // was constructed, our UART transmitter can send more than just 8N1)
     task automatic send_frame(
         logic [7:0] tx_data,
         ref logic txd

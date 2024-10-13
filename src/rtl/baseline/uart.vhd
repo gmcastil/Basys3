@@ -160,19 +160,19 @@ begin
         DEVICE          => DEVICE,
         FIFO_WIDTH      => TX_DATA_WIDTH,
         FIFO_SIZE       => "18Kb",
-        DO_REG          => 1,
+        DO_REG          => 0,
         DEBUG           => false
     )
     port map (
-        clk             => clk,                 -- in    std_logic;
-        rst             => rst,                 -- in    std_logic;
-        wr_en           => tx_fifo_wr_en,       -- in    std_logic;
-        wr_data         => tx_fifo_wr_data,     -- in    std_logic_vector((FIFO_WIDTH - 1) downto 0);
-        rd_en           => tx_fifo_rd_en,       -- in    std_logic;
-        rd_data         => tx_fifo_rd_data,     -- out   std_logic_vector((FIFO_WIDTH - 1) downto 0);
-        ready           => tx_fifo_ready,       -- out   std_logic;
-        full            => tx_fifo_full,        -- out   std_logic;
-        empty           => tx_fifo_empty        -- out   std_logic
+        clk             => clk,
+        rst             => rst,
+        wr_en           => tx_fifo_wr_en,
+        wr_data         => tx_fifo_wr_data,
+        rd_en           => tx_fifo_rd_en,
+        rd_data         => tx_fifo_rd_data,
+        ready           => tx_fifo_ready,
+        full            => tx_fifo_full,
+        empty           => tx_fifo_empty
     );
 
     fifo_rx_i0: entity work.fifo_sync
@@ -184,15 +184,15 @@ begin
         DEBUG           => false
     )
     port map (
-        clk             => clk,                 -- in    std_logic;
-        rst             => rst,                 -- in    std_logic;
-        wr_en           => uart_rd_valid_l,     -- in    std_logic;
-        wr_data         => uart_rd_data_l,      -- in    std_logic_vector((FIFO_WIDTH - 1) downto 0);
-        rd_en           => rx_fifo_rd_en,       -- in    std_logic;
-        rd_data         => rx_fifo_rd_data,     -- out   std_logic_vector((FIFO_WIDTH - 1) downto 0);
-        ready           => rx_fifo_ready,       -- out   std_logic;
-        full            => rx_fifo_full,        -- out   std_logic;
-        empty           => rx_fifo_empty        -- out   std_logic
+        clk             => clk,
+        rst             => rst,
+        wr_en           => uart_rd_valid_l,
+        wr_data         => uart_rd_data_l,
+        rd_en           => rx_fifo_rd_en,
+        rd_data         => rx_fifo_rd_data,
+        ready           => rx_fifo_ready,
+        full            => rx_fifo_full,
+        empty           => rx_fifo_empty
     );
 
     skid_buffer_rx: entity work.skid_buffer
@@ -200,16 +200,16 @@ begin
         DATA_WIDTH      => RX_DATA_WIDTH
     )
     port map (
-        clk             => clk,                 -- in    std_logic;
-        rst             => rst,                 -- in    std_logic;
-        fifo_rd_data    => rx_fifo_rd_data,     -- in    std_logic_vector((DATA_WIDTH - 1) downto 0);
-        fifo_rd_en      => rx_fifo_rd_en,       -- out   std_logic := '0';
-        fifo_full       => rx_fifo_full,        -- in    std_logic;
-        fifo_empty      => rx_fifo_empty,       -- in    std_logic;
-        fifo_ready      => rx_fifo_ready,       -- in    std_logic;
-        rd_data         => uart_rd_data,        -- out   std_logic_vector((DATA_WIDTH - 1) downto 0);
-        rd_valid        => uart_rd_valid,       -- out   std_logic := '0';
-        rd_ready        => uart_rd_ready        -- in    std_logic
+        clk             => clk,
+        rst             => rst,
+        fifo_rd_data    => rx_fifo_rd_data,
+        fifo_rd_en      => rx_fifo_rd_en,
+        fifo_full       => rx_fifo_full,
+        fifo_empty      => rx_fifo_empty,
+        fifo_ready      => rx_fifo_ready,
+        rd_data         => uart_rd_data,
+        rd_valid        => uart_rd_valid,
+        rd_ready        => uart_rd_ready
     );
 
 end architecture structural;

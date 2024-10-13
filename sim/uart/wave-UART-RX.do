@@ -52,8 +52,14 @@ add wave -noupdate -radix hexadecimal /uart_rx_tb/uart_dut/skid_buffer_rx/skid_d
 add wave -noupdate -radix hexadecimal /uart_rx_tb/uart_dut/skid_buffer_rx/rd_valid
 add wave -noupdate -radix hexadecimal /uart_rx_tb/uart_dut/skid_buffer_rx/rd_ready
 add wave -noupdate -radix hexadecimal /uart_rx_tb/uart_dut/skid_buffer_rx/rd_data
+add wave -noupdate -divider {UART Top (RX)}
+add wave -noupdate /uart_rx_tb/uart_dut/clk
+add wave -noupdate /uart_rx_tb/uart_dut/rst
+add wave -noupdate /uart_rx_tb/uart_dut/uart_rd_data
+add wave -noupdate /uart_rx_tb/uart_dut/uart_rd_valid
+add wave -noupdate /uart_rx_tb/uart_dut/uart_rd_ready
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {82873362 ps} 0}
+WaveRestoreCursors {{Cursor 1} {82807648 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 325
 configure wave -valuecolwidth 111
@@ -69,4 +75,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {82642072 ps} {83296606 ps}
+WaveRestoreZoom {82557175 ps} {83075567 ps}

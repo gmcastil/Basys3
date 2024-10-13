@@ -22,11 +22,12 @@ module uart_rx_tb;
   logic         uart_clk;
   logic         uart_rst;
 
+  // Indicator that file has been sent to the UART
+  logic         done;
   uart_bfm bfm;
 
-  string test_file = "128b-random.bin";
-  string recv_file = "128b-random-recv.bin";
-  int recv_fd;
+  localparam string SEND_FILE = "128b-random.bin";
+  localparam string RECV_FILE = "128b-random-recv.bin";
 
   assign uart_clk = sys_clk[0];
   assign uart_rst = sys_rst[0];
@@ -49,8 +50,8 @@ module uart_rx_tb;
     rst_ext = 1'b0;
     uart_rxd = 1'b1;
     uart_mode = 2'b00;
+    done = 1'b0;
 
-    uart_rd_ready = 1'b0;
     uart_wr_valid = 1'b0;
 
     // To test the RX portion of the hardware, we use a UART BFM that supports
@@ -60,48 +61,40 @@ module uart_rx_tb;
     // Wait until reset is deasserted
     @(negedge uart_rst);
     $display("UART reset complete");
-    // UART stimulus can start several clocks after reset is deasserted (this is not exactly true,
-    // since the FIFO might not be ready yet.  Future revision should include some sort of a ready
-    // signal, but for now this is good)
+
     repeat (10) @(posedge uart_clk);
 
     // Now that the UART is done with reset (see note on ready and FIFO status)
-    uart_rd_ready = 1'b1;
     @(posedge uart_clk);
 
-    $display("Sending %s to UART", test_file);
-    bfm.send_file(test_file, uart_rxd);
+    $display("Sending %s to UART", SEND_FILE);
+    bfm.send_file(SEND_FILE, uart_rxd);
 
+    @(posedge uart_clk);
+    done = 1'b1;
+    @(posedge uart_clk);
+    done = 1'b0;
+
+    #1200us; 
     $display("Done");
     $finish();
   end
 
-  // Open the received file so we can save what is received in a clocked process
-  // that is sensitive to clock edges
-  initial begin
-    recv_fd = $fopen(recv_file, "wb");
-    if (recv_fd) begin
-      $display("Opened %s for storing received data", recv_file);
-    end else begin
-      $fatal(1, "Could not open %s for writing", recv_file);
-    end
-    $fflush(recv_fd);
-  end
-
-    always @(posedge uart_clk) begin
-        if ( (uart_rd_valid == 1'b1 ) && (uart_rd_ready == 1'b1) ) begin
-            if (recv_fd) begin
-                $fwrite(recv_fd, "%c", uart_rd_data);
-            end
-        end
-    end
-
-  final begin
-    if (recv_fd) begin
-      $display("Closing %s", recv_file);
-      $fclose(recv_fd);
-    end
-  end
+  data_capture #(
+    .FILENAME         (RECV_FILE),
+    .DATA_WIDTH       (8),
+    .MODE             (2),
+    .ASSERT_CNT       (5),
+    .DEASSERT_CNT     (5)
+  ) 
+  data_capture_uart_rx (
+    .clk              (uart_clk),
+    .rst              (uart_rst),
+    .data             (uart_rd_data),
+    .valid            (uart_rd_valid),
+    .ready            (uart_rd_ready),
+    .done             (done)
+  );
 
   clk_rst #(
     .RST_LENGTH       (10),
