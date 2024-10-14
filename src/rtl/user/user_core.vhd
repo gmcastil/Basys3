@@ -50,5 +50,20 @@ begin
         pwm_drive           => user_led(0)
     );
 
+    process(sys_clk(0))
+    begin
+        if rising_edge(sys_clk(0)) then
+            if (sys_rst(0) = '1') then
+                uart_rd_ready       <= '0';
+            else
+                if (uart_rd_valid = '1') then
+                    uart_rd_ready       <= '1';
+                else
+                    uart_rd_ready       <= '0';
+                end if;
+            end if;
+        end if;
+    end process;
+
 end architecture structural;
 

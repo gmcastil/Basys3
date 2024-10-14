@@ -2,7 +2,10 @@
 
 import uart_pkg::uart_bfm;
 
-module uart_rx_tb;
+module uart_rx_tb #(
+  parameter   string  SEND_FILE = "128b-random.bin",
+  parameter   string  RECV_FILE = "128b-random-recv.bin"
+) ();
 
   logic [7:0]   uart_rd_data;
   logic         uart_rd_valid;
@@ -21,13 +24,11 @@ module uart_rx_tb;
 
   logic         uart_clk;
   logic         uart_rst;
+  logic         uart_ready;
 
   // Indicator that file has been sent to the UART
   logic         done;
   uart_bfm bfm;
-
-  localparam string SEND_FILE = "128b-random.bin";
-  localparam string RECV_FILE = "128b-random-recv.bin";
 
   assign uart_clk = sys_clk[0];
   assign uart_rst = sys_rst[0];
@@ -115,6 +116,7 @@ module uart_rx_tb;
   uart_dut (
     .clk              (uart_clk),       // in    std_logic;
     .rst              (uart_rst),       // in    std_logic;
+    .uart_ready       (uart_ready),     // out   std_logic;
     .uart_rd_data     (uart_rd_data),   // out   std_logic_vector(7 downto 0);
     .uart_rd_valid    (uart_rd_valid),  // out   std_logic;
     .uart_rd_ready    (uart_rd_ready),  // in    std_logic;

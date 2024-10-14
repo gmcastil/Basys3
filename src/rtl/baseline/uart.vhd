@@ -16,6 +16,8 @@ entity uart is
         clk                 : in    std_logic;
         rst                 : in    std_logic;
 
+        uart_ready          : out   std_logic;
+
         uart_rd_data        : out   std_logic_vector(7 downto 0);
         uart_rd_valid       : out   std_logic;
         uart_rd_ready       : in    std_logic;
@@ -100,20 +102,29 @@ architecture structural of uart is
 
 begin
 
-    -- I think this is something that needs to be changed entirely, but for now, just using the
-    -- reset to determine if the external reader is ready to drive the UART_RX module is probably
-    -- ok. Key idea here is that the external reader needs to be reading entirely from the skid
-    -- buffer, and not have any involvement with the uart_rx.  Looking at the elaborated design in
-    -- Vivado, I'm not entirely sure that I actually need a ready input to the RX side of the UART.
-    -- It might be a lot simpler to just have a clock, reset, and the RXD line.  Then it just spits
-    -- out bytes and valid strobes.  I need to decide where / how I want to do error checking as
-    -- well as defining a control register interface because, eventually, I'm going to want ot write
-    -- a driver for this thing.  So, perhaps a good thing to do would be to look at the driver
-    -- source code for other UART devices.
-    --
-    -- Edit: I'm even more sure now, because a UART with zero FIFOs of any kind is sort of dumb.
-    -- This isn't 1977.
-    uart_rd_ready_l     <= not rst;
+    -- Use the generated UART ready signal to indicate to our RXD receiver
+    -- that we are ready for data. This should basically be asserted a few clocks
+    -- after the deassertion of reset and then stay high forever after.
+    uart_rd_ready_l     <= uart_ready;
+
+    -- The UART is ready to send and receive data once we're out of reset
+    -- and the RX and TX FIFO are ready.  There is some internal housekeeping that
+    -- Xilinx FIFOs have which creates a gap between when the reset is deasserted
+    -- and the FIFO wrapper is actually ready to receive data.
+    process(clk)
+    begin
+        if rising_edge(clk) then
+            if (rst = '1') then
+                uart_ready      <= '0';
+            else
+                if (rx_fifo_ready = '1' and tx_fifo_ready = '1') then
+                    uart_ready      <= '1';
+                else
+                    uart_ready      <= '0';
+                end if;
+            end if;
+        end if;
+    end process;
 
     baud_rate_gen_i0: entity work.baud_rate_gen
     generic map (
@@ -142,7 +153,6 @@ begin
         uart_rxd        => uart_rxd
     );
 
-    -- Should add frame counts to the RX and TX cores here
     uart_tx_i0: entity work.uart_tx
     port map (
         clk             => clk,
