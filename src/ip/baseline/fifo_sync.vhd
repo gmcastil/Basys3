@@ -31,6 +31,8 @@ entity fifo_sync is
         --   36 - 72  |   36Kb    |    64      |   512
         --
         FIFO_SIZE           : string        := "18Kb";
+        -- Enable first-word fall through behavior (default to standard)
+        FWFT                : boolean       := false;
         -- Enable output register
         DO_REG              : natural       := 0;
         -- Enable debug output for simulation purposes
@@ -399,7 +401,7 @@ begin
                 EN_ECC_WRITE                => false,
                 EN_SYN                      => true,
                 FIFO_MODE                   => FIFO_MODE,
-                FIRST_WORD_FALL_THROUGH     => false,
+                FIRST_WORD_FALL_THROUGH     => FWFT,
                 INIT                        => X"000000000000000000",
                 IS_RDCLK_INVERTED           => '0',
                 IS_RDEN_INVERTED            => '0',
@@ -446,7 +448,7 @@ begin
                 DO_REG                      => DO_REG,
                 EN_SYN                      => true,
                 FIFO_MODE                   => FIFO_MODE,
-                FIRST_WORD_FALL_THROUGH     => false,
+                FIRST_WORD_FALL_THROUGH     => FWFT,
                 INIT                        => X"000000000",
                 IS_RDCLK_INVERTED           => '0',
                 IS_RDEN_INVERTED            => '0',
