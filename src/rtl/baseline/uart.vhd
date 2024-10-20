@@ -102,11 +102,6 @@ architecture structural of uart is
 
 begin
 
-    -- Use the generated UART ready signal to indicate to our RXD receiver
-    -- that we are ready for data. This should basically be asserted a few clocks
-    -- after the deassertion of reset and then stay high forever after.
-    uart_rd_ready_l     <= uart_ready;
-
     -- The UART is ready to send and receive data once we're out of reset
     -- and the RX and TX FIFO are ready.  There is some internal housekeeping that
     -- Xilinx FIFOs have which creates a gap between when the reset is deasserted
@@ -115,13 +110,19 @@ begin
     begin
         if rising_edge(clk) then
             if (rst = '1') then
-                uart_ready      <= '0';
+                uart_ready          <= '0';
+                uart_rd_ready_l     <= '0';
             else
+                -- We can read from UART RX when the read FIFO is ready
+                uart_rd_ready_l     <= rx_fifo_ready;
+
+                -- External ready is asserted when both RX and TX are ready
                 if (rx_fifo_ready = '1' and tx_fifo_ready = '1') then
-                    uart_ready      <= '1';
+                    uart_ready          <= '1';
                 else
-                    uart_ready      <= '0';
+                    uart_ready          <= '0';
                 end if;
+
             end if;
         end if;
     end process;
@@ -165,11 +166,15 @@ begin
         uart_txd        => uart_txd
     );
 
+    -- The RX and TX FIFO are each configured as standard FIFO primitives (i.e., not first-word
+    -- fall-through) and each has the internal output register enabled, so there are two clocks of
+    -- latency between when the read enable is asserted and data is available at the FIFO output
     fifo_tx_i0: entity work.fifo_sync
     generic map (
         DEVICE          => DEVICE,
         FIFO_WIDTH      => TX_DATA_WIDTH,
         FIFO_SIZE       => "18Kb",
+        FWFT            => false,
         DO_REG          => 0,
         DEBUG           => false
     )
@@ -190,6 +195,7 @@ begin
         DEVICE          => DEVICE,
         FIFO_WIDTH      => RX_DATA_WIDTH,
         FIFO_SIZE       => "18Kb",
+        FWFT            => false,
         DO_REG          => 0,
         DEBUG           => false
     )

@@ -58,6 +58,7 @@ architecture structural of basys3_top is
     signal sseg_selectn         : std_logic_vector(3 downto 0);
 
     -- UART
+    signal uart_ready           : std_logic;
     signal uart_rd_data         : std_logic_vector(7 downto 0);
     signal uart_rd_valid        : std_logic;
     signal uart_rd_ready        : std_logic;
@@ -131,17 +132,14 @@ begin
     port map (
         clk                 => clk_100m00,
         rst                 => rst_100m00,
-
+        uart_ready          => uart_ready,
         uart_rd_data        => uart_rd_data,
         uart_rd_valid       => uart_rd_valid,
         uart_rd_ready       => uart_rd_ready,
-
         uart_wr_data        => uart_wr_data,
         uart_wr_valid       => uart_wr_valid,
         uart_wr_ready       => uart_wr_ready,
-
         uart_mode           => uart_mode,
-
         uart_rxd            => uart_rxd,
         uart_txd            => uart_txd
     );
@@ -160,6 +158,8 @@ begin
     port map (
         sys_clk             => sys_clk,
         sys_rst             => sys_rst,
+
+        uart_ready          => uart_ready,
 
         uart_rd_data        => uart_rd_data,
         uart_rd_valid       => uart_rd_valid,

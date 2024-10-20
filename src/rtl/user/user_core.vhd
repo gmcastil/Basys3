@@ -6,6 +6,8 @@ entity user_core is
         sys_clk             : in    std_logic_vector(5 downto 0);
         sys_rst             : in    std_logic_vector(5 downto 0);
 
+        uart_ready          : in    std_logic;
+
         uart_rd_data        : in    std_logic_vector(7 downto 0);
         uart_rd_valid       : in    std_logic;
         uart_rd_ready       : out   std_logic;
@@ -37,7 +39,9 @@ begin
 
     uart_mode                   <= slider_sw(1 downto 0);
 
-    user_led(15 downto 1)       <= (others=>'0');
+    user_led(15 downto 2)       <= (others=>'0');
+
+    user_led(1)                 <= uart_ready;
 
     pwm_i0: entity work.pwm_driver
     generic map(
