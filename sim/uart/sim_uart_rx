@@ -54,10 +54,19 @@ vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/uart_tx.vhd"
 vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/uart.vhd"
 
 vlog -work "${work}" -sv "../common/data_capture.sv"
-vlog -work "${work}" -sv "${tb_dir}/uart_rx_tb.v"
+
+# Several captures modes are supported (all after reset):
+#   0 - Never assert ready
+#   1 - Always assert ready
+#   2 - Periodically assert
+#   3 - Randomly assert ready
+vlog -work "${work}" -sv -define CAPTURE_READY_MODE=3 "${tb_dir}/uart_rx_tb.v"
 
 # Done compiling, so turn this back on
 set +e
 
-vsim -c -do "run_uart_rx_tb.do" work.uart_rx_tb
+vsim -c \
+    -do "run_uart_rx_tb.do" \
+    -voptargs=+acc \
+    "${work}.uart_rx_tb"
 

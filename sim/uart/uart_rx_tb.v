@@ -71,12 +71,13 @@ module uart_rx_tb #(
     $display("Sending %s to UART", SEND_FILE);
     bfm.send_file(SEND_FILE, uart_rxd);
 
+    #1200us; 
+
     @(posedge uart_clk);
     done = 1'b1;
     @(posedge uart_clk);
     done = 1'b0;
 
-    #1200us; 
     $display("Done");
     $finish();
   end
@@ -84,9 +85,9 @@ module uart_rx_tb #(
   data_capture #(
     .FILENAME         (RECV_FILE),
     .DATA_WIDTH       (8),
-    .MODE             (2),
-    .ASSERT_CNT       (5),
-    .DEASSERT_CNT     (5)
+    .MODE             (`CAPTURE_READY_MODE),
+    .ASSERT_CNT       (1),
+    .DEASSERT_CNT     (1000)
   ) 
   data_capture_uart_rx (
     .clk              (uart_clk),
@@ -102,10 +103,10 @@ module uart_rx_tb #(
     .NUM_CLOCKS       (6)
   )
   clk_rst_i0 (
-    .clk_ext          (clk_ext),        // in    std_logic;
-    .rst_ext          (rst_ext),        // in    std_logic;
-    .sys_clk          (sys_clk),        // out   std_logic_vector((NUM_CLOCKS - 1) downto 0);
-    .sys_rst          (sys_rst)         // out   std_logic_vector((NUM_CLOCKS - 1) downto 0)
+    .clk_ext          (clk_ext),
+    .rst_ext          (rst_ext),
+    .sys_clk          (sys_clk),
+    .sys_rst          (sys_rst)
   );
 
   uart #(
@@ -114,18 +115,18 @@ module uart_rx_tb #(
     .BAUD_RATE        (115200)
   )
   uart_dut (
-    .clk              (uart_clk),       // in    std_logic;
-    .rst              (uart_rst),       // in    std_logic;
-    .uart_ready       (uart_ready),     // out   std_logic;
-    .uart_rd_data     (uart_rd_data),   // out   std_logic_vector(7 downto 0);
-    .uart_rd_valid    (uart_rd_valid),  // out   std_logic;
-    .uart_rd_ready    (uart_rd_ready),  // in    std_logic;
-    .uart_wr_data     (uart_wr_data),   // in    std_logic_vector(7 downto 0);
-    .uart_wr_valid    (uart_wr_valid),  // in    std_logic;
-    .uart_wr_ready    (uart_wr_ready),  // out   std_logic;
-    .uart_mode        (uart_mode),      // in    std_logic_vector(1 downto 0);
-    .uart_rxd         (uart_rxd),       // in    std_logic;
-    .uart_txd         (uart_txd)        // out   std_logic
+    .clk              (uart_clk),
+    .rst              (uart_rst),
+    .uart_ready       (uart_ready),
+    .uart_rd_data     (uart_rd_data),
+    .uart_rd_valid    (uart_rd_valid),
+    .uart_rd_ready    (uart_rd_ready),
+    .uart_wr_data     (uart_wr_data),
+    .uart_wr_valid    (uart_wr_valid),
+    .uart_wr_ready    (uart_wr_ready),
+    .uart_mode        (uart_mode),
+    .uart_rxd         (uart_rxd),
+    .uart_txd         (uart_txd)
   );
 
 endmodule

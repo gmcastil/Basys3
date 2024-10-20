@@ -26,7 +26,7 @@ module data_capture #(
     input   logic       done
 );
 
-	integer recv_fd;
+	int recv_fd;
 	integer file_size = 0;
 	integer cycle_cnt = 0;
 	integer total_bytes = 0;
@@ -83,6 +83,11 @@ module data_capture #(
 
             // Randomly deassert the ready for a certain number of clocks
             RANDOM: begin
+                if ($random % 2 == 0) begin
+                    ready       <= 1'b1;
+                end else begin
+                    ready       <= 1'b0;
+                end
             end
 
             default: begin end
@@ -115,24 +120,26 @@ module data_capture #(
     // Write data to a file LSB first, returns number of bytes written to the
     // open file descriptor
     function automatic integer write_data(
-        input   integer fd,
-        input   logic [127:0] data
+        input   int fd,
+        input   logic [(DATA_WIDTH - 1):0] data
     );
         integer i;
         integer num_bytes;
         integer total_bytes = 0;
-        integer byte_cnt;
+
+        integer errno;
+        string str;
 
         num_bytes = DATA_WIDTH / 8;
 
         // Write data LSB first, one byte at a time.
         for (i = 0; i < num_bytes; i++) begin
-            //byte_cnt = $fwrite(fd, "%c", data[i*8 +: 8]);
             $fwrite(fd, "%c", data[i*8 +: 8]);
-            if (byte_cnt < 0) begin
-                $fatal(1, "Error writing byte %0d to file", i);
+            errno = $ferror(fd, str);
+            if (errno) begin
+                $fatal(1, str);
             end else begin
-                total_bytes += byte_cnt;
+                total_bytes += num_bytes;
             end
         end
         $fflush(fd);
