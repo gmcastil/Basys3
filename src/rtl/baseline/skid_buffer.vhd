@@ -24,8 +24,16 @@ end entity skid_buffer;
 
 architecture behavioral of skid_buffer is
 
-    -- Indicator that there is valid data from the FIFO
+    -- Indicator that there is valid data from the FIFO. The data flow from the FIFO to the output
+    -- is
+    --
+    --      fifo_rd_valid -> fifo_rd_valid_q -> rd_valid
+    --
+    -- If the consumer is not ready, then data should move to the skid register with skid_valid to
+    -- indicate it is occupied.
+    --
     signal fifo_rd_valid            : std_logic;
+    signal fifo_rd_valid_q          : std_logic;
     -- Indicator that there is valid data in the skid register
     signal skid_valid               : std_logic;
     signal skid_data                : std_logic_vector((DATA_WIDTH -1) downto 0);
@@ -39,6 +47,7 @@ begin
                 rd_valid            <= '0';
                 skid_valid          <= '0';
                 fifo_rd_valid       <= '0';
+                fifo_rd_valid_q     <= '0';
 
             else
                 -- Simple machine to control the output data interface
@@ -48,7 +57,7 @@ begin
                         rd_valid            <= '1';
                         rd_data             <= skid_data;
                     -- Data at the FIFO read output to send
-                    elsif (fifo_rd_valid = '1') then
+                    elsif (fifo_rd_valid_q = '1') then
                         rd_data             <= fifo_rd_data;
                         rd_valid            <= '1';
                     -- No data in either location to send
@@ -61,7 +70,7 @@ begin
                         rd_valid            <= '1';
                         rd_data             <= skid_data;
                     -- Data at the FIFO read output to send
-                    elsif (fifo_rd_valid = '1') then
+                    elsif (fifo_rd_valid_q = '1') then
                         rd_valid            <= '1';
                         rd_data             <= fifo_rd_data;
                     end if;
@@ -73,7 +82,7 @@ begin
                     skid_valid          <= '0';
                 -- When we are still reading from the FIFO, there is already data at the FIFO output and
                 -- we are presenting data at the output but the consumer is not ready, we will need to stall
-                elsif (fifo_rd_en = '1' and fifo_rd_valid = '1' and rd_valid = '1' and rd_ready = '0') then
+                elsif (fifo_rd_en = '1' and fifo_rd_valid_q = '1' and rd_valid = '1' and rd_ready = '0') then
                     skid_valid          <= '1';
                     skid_data           <= fifo_rd_data;
                 -- Or, if we are reading from the FIFO and the FIFO goes empty or non-ready
@@ -88,6 +97,7 @@ begin
                     fifo_rd_valid       <= '0';
                 end if;
 
+                fifo_rd_valid_q     <= fifo_rd_valid;
             end if;
         end if;
     end process;
