@@ -42,10 +42,9 @@ vmap work "${work}"
 
 # Packages need to be compiled in before the rest of the testbench
 vlog -work "${work}" -sv "${tb_dir}/uart_pkg.v"
-vlog -work "${work}" -sv "${tb_dir}/uart_rx_tb.v"
 
 # Compile DUT
-vcom -work "${work}" -2008 "${ip_dir}/baseline/fifo_sync.vhd"
+vcom -lint -work "${work}" -2008 "${ip_dir}/baseline/fifo_sync.vhd"
 
 vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/skid_buffer.vhd"
 vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/clk_rst.vhd"
@@ -53,6 +52,9 @@ vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/baud_rate_gen.vhd"
 vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/uart_rx.vhd"
 vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/uart_tx.vhd"
 vcom -lint -work "${work}" -2008 "${rtl_dir}/baseline/uart.vhd"
+
+vlog -work "${work}" -sv "../common/data_capture.sv"
+vlog -work "${work}" -sv "${tb_dir}/uart_rx_tb.v"
 
 # Done compiling, so turn this back on
 set +e
