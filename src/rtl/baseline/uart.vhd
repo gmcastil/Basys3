@@ -10,7 +10,7 @@ entity uart is
         CLK_FREQ            : integer       := 100000000;
         -- Desired baud rate
         BAUD_RATE           : integer       := 115200;
-        UART_DEBUG          : string        := "false"
+        DEBUG               : boolean       := false
     );
     port (
         clk                 : in    std_logic;
@@ -79,27 +79,6 @@ architecture structural of uart is
     -- TX registers
     signal tx_frame_cnt             : unsigned(31 downto 0);
 
-    attribute MARK_DEBUG            : string;
-
-    -- Mark TX FIFO signals
-    attribute MARK_DEBUG of tx_fifo_wr_en           : signal is UART_DEBUG;
-    attribute MARK_DEBUG of tx_fifo_wr_data         : signal is UART_DEBUG;
-    attribute MARK_DEBUG of tx_fifo_rd_en           : signal is UART_DEBUG;
-    attribute MARK_DEBUG of tx_fifo_rd_data         : signal is UART_DEBUG;
-    attribute MARK_DEBUG of tx_fifo_full            : signal is UART_DEBUG;
-    attribute MARK_DEBUG of tx_fifo_empty           : signal is UART_DEBUG;
-    -- Mark RX FIFO signals
-    attribute MARK_DEBUG of rx_fifo_wr_en           : signal is UART_DEBUG;
-    attribute MARK_DEBUG of rx_fifo_wr_data         : signal is UART_DEBUG;
-    attribute MARK_DEBUG of rx_fifo_rd_en           : signal is UART_DEBUG;
-    attribute MARK_DEBUG of rx_fifo_rd_data         : signal is UART_DEBUG;
-    attribute MARK_DEBUG of rx_fifo_full            : signal is UART_DEBUG;
-    attribute MARK_DEBUG of rx_fifo_empty           : signal is UART_DEBUG;
-
-    attribute MARK_DEBUG of rx_frame_err            : signal is UART_DEBUG;
-    attribute MARK_DEBUG of rx_frame_cnt            : signal is UART_DEBUG;
-    attribute MARK_DEBUG of tx_frame_cnt            : signal is UART_DEBUG;
-
 begin
 
     -- The UART is ready to send and receive data once we're out of reset
@@ -167,8 +146,10 @@ begin
     );
 
     -- The RX and TX FIFO are each configured as standard FIFO primitives (i.e., not first-word
-    -- fall-through) and each has the internal output register enabled, so there are two clocks of
-    -- latency between when the read enable is asserted and data is available at the FIFO output
+    -- fall-through).  If the FIFO has DO_REG = 1, then there are two cycles of delay between when
+    -- the read enable is asserted and data is available at the FIFO output.  With DO_REG, there is
+    -- only one.
+
     fifo_tx_i0: entity work.fifo_sync
     generic map (
         DEVICE          => DEVICE,
@@ -209,6 +190,23 @@ begin
         ready           => rx_fifo_ready,
         full            => rx_fifo_full,
         empty           => rx_fifo_empty
+    );
+
+    skid_buffer_tx: entity work.skid_buffer
+    generic map (
+        DATA_WIDTH      => TX_DATA_WIDTH
+    )
+    port map (
+        clk             => clk,
+        rst             => rst,
+        fifo_rd_data    => tx_fifo_rd_data,
+        fifo_rd_en      => tx_fifo_rd_en,
+        fifo_full       => tx_fifo_full,
+        fifo_empty      => tx_fifo_empty,
+        fifo_ready      => tx_fifo_ready,
+        rd_data         => uart_wr_data_l,
+        rd_valid        => uart_wr_valid_l,
+        rd_ready        => uart_wr_ready_l
     );
 
     skid_buffer_rx: entity work.skid_buffer

@@ -37,10 +37,10 @@ architecture structural of user_core is
 
 begin
 
-    uart_mode                   <= slider_sw(1 downto 0);
+--    uart_mode                   <= slider_sw(1 downto 0);
+    uart_mode               <= "01";
 
     user_led(15 downto 2)       <= (others=>'0');
-
     user_led(1)                 <= uart_ready;
 
     pwm_i0: entity work.pwm_driver
