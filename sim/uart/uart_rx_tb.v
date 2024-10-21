@@ -112,7 +112,8 @@ module uart_rx_tb #(
   uart #(
     .DEVICE           ("7SERIES"),
     .CLK_FREQ         (100000000),
-    .BAUD_RATE        (115200)
+    .BAUD_RATE        (115200),
+    .UART_MODE        ("NORMAL")
   )
   uart_dut (
     .clk              (uart_clk),
@@ -124,7 +125,6 @@ module uart_rx_tb #(
     .uart_wr_data     (uart_wr_data),
     .uart_wr_valid    (uart_wr_valid),
     .uart_wr_ready    (uart_wr_ready),
-    .uart_mode        (uart_mode),
     .uart_rxd         (uart_rxd),
     .uart_txd         (uart_txd)
   );
