@@ -10,7 +10,8 @@ entity uart is
         CLK_FREQ            : integer       := 100000000;
         -- Desired baud rate
         BAUD_RATE           : integer       := 115200;
-        DEBUG               : boolean       := false
+        -- Enable loopback mode (data received on RXD will be sent out TXD)
+        UART_MODE           : string        := "NORMAL"
     );
     port (
         clk                 : in    std_logic;
@@ -26,7 +27,12 @@ entity uart is
         uart_wr_valid       : in    std_logic;
         uart_wr_ready       : out   std_logic;
 
-        uart_mode           : in    std_logic_vector(1 downto 0);
+        -- Interesting, for registers to start defining, add the RX and TX frame counts, errors,
+        -- also add an indicator for NULL status or at least just wire out pins for status (e.g.,
+        -- some higher level system register map or soemthing)  I can see wanting to NULL out the
+        -- UART, not have to include the registers that it contains, and then wirtin gthe UART
+        -- status that it was built with out to a system register or something
+        -- uart_status         : out   std_logic_vector(31 downto 0);
 
         uart_rxd            : in    std_logic;
         uart_txd            : out   std_logic
@@ -35,10 +41,6 @@ entity uart is
 end entity uart;
 
 architecture structural of uart is
-
-    -- UART mode select options
-    constant UART_MODE_NORMAL       : std_logic_vector(1 downto 0) := "00";
-    constant UART_MODE_LOOPBACK     : std_logic_vector(1 downto 0) := "01";
 
     -- Width of the FIFO data ports
     constant TX_DATA_WIDTH          : natural := 8;
@@ -55,14 +57,6 @@ architecture structural of uart is
     signal tx_fifo_full             : std_logic;
     signal tx_fifo_empty            : std_logic;
 
-    signal rx_fifo_wr_en            : std_logic;
-    signal rx_fifo_wr_data          : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
-    signal rx_fifo_rd_en            : std_logic;
-    signal rx_fifo_rd_data          : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
-    signal rx_fifo_ready            : std_logic;
-    signal rx_fifo_full             : std_logic;
-    signal rx_fifo_empty            : std_logic;
-
     -- Local UART signals
     signal uart_rd_data_l           : std_logic_vector((RX_DATA_WIDTH - 1) downto 0);
     signal uart_rd_valid_l          : std_logic;
@@ -73,6 +67,8 @@ architecture structural of uart is
     signal uart_wr_ready_l          : std_logic;
 
     -- RX registers
+    signal rx_ready                 : std_logic;
+    signal rx_overflow              : std_logic;
     signal rx_frame_err             : unsigned(31 downto 0);
     signal rx_frame_cnt             : unsigned(31 downto 0);
 
@@ -81,150 +77,83 @@ architecture structural of uart is
 
 begin
 
-    -- The UART is ready to send and receive data once we're out of reset
-    -- and the RX and TX FIFO are ready.  There is some internal housekeeping that
-    -- Xilinx FIFOs have which creates a gap between when the reset is deasserted
-    -- and the FIFO wrapper is actually ready to receive data.
-    process(clk)
-    begin
-        if rising_edge(clk) then
-            if (rst = '1') then
-                uart_ready          <= '0';
-                uart_rd_ready_l     <= '0';
-            else
-                -- We can read from UART RX when the read FIFO is ready
-                uart_rd_ready_l     <= rx_fifo_ready;
+    g_uart_ports: if (UART_MODE = "NULL") generate
 
-                -- External ready is asserted when both RX and TX are ready
-                if (rx_fifo_ready = '1' and tx_fifo_ready = '1') then
-                    uart_ready          <= '1';
-                else
-                    uart_ready          <= '0';
-                end if;
+        uart_rd_data        <= (others=>'0');
+        uart_rd_valid       <= '0';
+        uart_wr_ready       <= '0';
 
-            end if;
-        end if;
-    end process;
+    elsif (UART_MODE = "LOOPBACK") generate
 
-    baud_rate_gen_i0: entity work.baud_rate_gen
-    generic map (
-        CLK_FREQ        => CLK_FREQ,
-        BAUD_RATE       => BAUD_RATE
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        baud_tick       => baud_tick
-    );
+        uart_rd_data        <= (others=>'0');
+        uart_rd_valid       <= '0';
+        uart_rd_ready_l     <= uart_wr_ready_l;
 
-    uart_rx_i0: entity work.uart_rx
-    generic map (
-        CLK_FREQ        => CLK_FREQ,
-        BAUD_RATE       => BAUD_RATE
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        uart_rd_data    => uart_rd_data_l,
-        uart_rd_valid   => uart_rd_valid_l,
-        uart_rd_ready   => uart_rd_ready_l,
-        rx_frame_cnt    => rx_frame_cnt,
-        rx_frame_err    => rx_frame_err,
-        uart_rxd        => uart_rxd
-    );
+        uart_wr_data_l      <= uart_rd_data_l;
+        uart_wr_valid_l     <= uart_rd_valid_l;
+        uart_wr_ready       <= '0';
 
-    uart_tx_i0: entity work.uart_tx
-    port map (
-        clk             => clk,
-        rst             => rst,
-        baud_tick       => baud_tick,
-        uart_wr_data    => uart_wr_data_l,
-        uart_wr_valid   => uart_wr_valid_l,
-        uart_wr_ready   => uart_wr_ready_l,
-        tx_frame_cnt    => tx_frame_cnt,
-        uart_txd        => uart_txd
-    );
+    elsif (UART_MODE = "NORMAL") generate
 
-    -- The RX and TX FIFO are each configured as standard FIFO primitives (i.e., not first-word
-    -- fall-through).  If the FIFO has DO_REG = 1, then there are two cycles of delay between when
-    -- the read enable is asserted and data is available at the FIFO output.  With DO_REG, there is
-    -- only one.
+        uart_wr_data_l      <= uart_wr_data;
+        uart_wr_valid_l     <= uart_wr_valid;
+        uart_wr_ready       <= uart_wr_ready_l;
 
-    fifo_tx_i0: entity work.fifo_sync
-    generic map (
-        DEVICE          => DEVICE,
-        FIFO_WIDTH      => TX_DATA_WIDTH,
-        FIFO_SIZE       => "18Kb",
-        FWFT            => false,
-        DO_REG          => 0,
-        DEBUG           => false
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        wr_en           => tx_fifo_wr_en,
-        wr_data         => tx_fifo_wr_data,
-        rd_en           => tx_fifo_rd_en,
-        rd_data         => tx_fifo_rd_data,
-        ready           => tx_fifo_ready,
-        full            => tx_fifo_full,
-        empty           => tx_fifo_empty
-    );
+        uart_rd_data        <= uart_rd_data_l;
+        uart_rd_valid       <= uart_rd_valid_l;
+        uart_rd_ready_l     <= uart_rd_ready;
 
-    fifo_rx_i0: entity work.fifo_sync
-    generic map (
-        DEVICE          => DEVICE,
-        FIFO_WIDTH      => RX_DATA_WIDTH,
-        FIFO_SIZE       => "18Kb",
-        FWFT            => false,
-        DO_REG          => 0,
-        DEBUG           => false
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        wr_en           => uart_rd_valid_l,
-        wr_data         => uart_rd_data_l,
-        rd_en           => rx_fifo_rd_en,
-        rd_data         => rx_fifo_rd_data,
-        ready           => rx_fifo_ready,
-        full            => rx_fifo_full,
-        empty           => rx_fifo_empty
-    );
+    end generate g_uart_ports;
 
-    skid_buffer_tx: entity work.skid_buffer
-    generic map (
-        DATA_WIDTH      => TX_DATA_WIDTH
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        fifo_rd_data    => tx_fifo_rd_data,
-        fifo_rd_en      => tx_fifo_rd_en,
-        fifo_full       => tx_fifo_full,
-        fifo_empty      => tx_fifo_empty,
-        fifo_ready      => tx_fifo_ready,
-        rd_data         => uart_wr_data_l,
-        rd_valid        => uart_wr_valid_l,
-        rd_ready        => uart_wr_ready_l
-    );
+    -- UART components only get instantiated when the UART was synthesized in loopback or normal
+    -- mode, but the ports get hooked up differently.  If we are nulling out the UART, then
+    -- obviously don't instantiate anything.
+    g_uart_comps: if (UART_MODE = "LOOPBACK" or UART_MODE = "NORMAL") generate
 
-    skid_buffer_rx: entity work.skid_buffer
-    generic map (
-        DATA_WIDTH      => RX_DATA_WIDTH
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        fifo_rd_data    => rx_fifo_rd_data,
-        fifo_rd_en      => rx_fifo_rd_en,
-        fifo_full       => rx_fifo_full,
-        fifo_empty      => rx_fifo_empty,
-        fifo_ready      => rx_fifo_ready,
-        rd_data         => uart_rd_data,
-        rd_valid        => uart_rd_valid,
-        rd_ready        => uart_rd_ready
-    );
+        baud_rate_gen_i0: entity work.baud_rate_gen
+        generic map (
+            CLK_FREQ        => CLK_FREQ,
+            BAUD_RATE       => BAUD_RATE
+        )
+        port map (
+            clk             => clk,
+            rst             => rst,
+            baud_tick       => baud_tick
+        );
+
+        uart_rx_i0: entity work.uart_rx
+        generic map (
+            CLK_FREQ            => CLK_FREQ,
+            BAUD_RATE           => BAUD_RATE,
+            DEVICE              => DEVICE,
+            FIFO_SIZE           => "18Kb"
+        )
+        port map (
+            clk                 => clk,
+            rst                 => rst,
+            rd_data             => uart_rd_data_l,
+            rd_valid            => uart_rd_valid_l,
+            rd_ready            => uart_rd_ready_l,
+            rx_ready            => rx_ready,
+            rx_overflow         => rx_overflow,
+            rx_frame_cnt        => rx_frame_cnt,
+            rx_frame_err        => rx_frame_err,
+            uart_rxd            => uart_rxd
+        );
+
+        uart_tx_i0: entity work.uart_tx
+        port map (
+            clk             => clk,
+            rst             => rst,
+            baud_tick       => baud_tick,
+            uart_wr_data    => uart_wr_data_l,
+            uart_wr_valid   => uart_wr_valid_l,
+            uart_wr_ready   => uart_wr_ready_l,
+            tx_frame_cnt    => tx_frame_cnt,
+            uart_txd        => uart_txd
+        );
+
+    end generate g_uart_comps;
 
 end architecture structural;
 

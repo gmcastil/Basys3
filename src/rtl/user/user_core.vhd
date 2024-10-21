@@ -16,8 +16,6 @@ entity user_core is
         uart_wr_valid       : out   std_logic;
         uart_wr_ready       : in    std_logic;
 
-        uart_mode           : out   std_logic_vector(1 downto 0);
-
         sseg_digit          : out   std_logic_vector(6 downto 0);
         sseg_dp             : out   std_logic;
         sseg_selectn        : out   std_logic_vector(3 downto 0);
@@ -36,9 +34,6 @@ architecture structural of user_core is
     attribute MARK_DEBUG of uart_rd_ready       : signal is "true";
 
 begin
-
---    uart_mode                   <= slider_sw(1 downto 0);
-    uart_mode               <= "01";
 
     user_led(15 downto 2)       <= (others=>'0');
     user_led(1)                 <= uart_ready;

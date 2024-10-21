@@ -125,9 +125,10 @@ begin
     -- UART core
     uart_i0: entity work.uart
     generic map (
+        DEVICE              => "7SERIES",
         CLK_FREQ            => 100000000,
         BAUD_RATE           => 115200,
-        DEBUG               => UART_DEBUG
+        UART_MODE           => "LOOPBACK"
     )
     port map (
         clk                 => clk_100m00,
@@ -139,7 +140,6 @@ begin
         uart_wr_data        => uart_wr_data,
         uart_wr_valid       => uart_wr_valid,
         uart_wr_ready       => uart_wr_ready,
-        uart_mode           => uart_mode,
         uart_rxd            => uart_rxd,
         uart_txd            => uart_txd
     );
@@ -168,8 +168,6 @@ begin
         uart_wr_data        => uart_wr_data,
         uart_wr_valid       => uart_wr_valid,
         uart_wr_ready       => uart_wr_ready,
-
-        uart_mode           => uart_mode,
 
         sseg_digit          => open,
         sseg_dp             => open,
