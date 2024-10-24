@@ -22,3 +22,6 @@ perf.data
 transcript
 vivado_pid*.str
 
+# Recreate tags, dont version control them
+ctags
+tags
