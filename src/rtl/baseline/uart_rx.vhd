@@ -116,77 +116,84 @@ begin
                 rx_frame_err        <= (others=>'0');
 
             else
-                -- Looking for the start bit
-                if (rx_busy = '0') then
-                    if (uart_rxd_qq = '0' and uart_rxd_qqq = '1') then
-                        rx_busy             <= '1';
-                        rx_bit_cnt          <= (others=>'0');
-
-                        found_start         <= '0';
-                        -- For the start bit, we set the counter to half the baud period
-                        baud_tick_cnt       <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length) srl 1;
-                        rx_overflow         <= '0';
-
-                    end if;
+                if (rx_fifo_ready = '0') then
+                    rx_busy             <= '0';
                     rx_fifo_wr_en       <= '0';
+                    rx_bit_cnt          <= (others=>'0');
+                    
                 else
-                    -- Capture the start bit half a baud period into the transmission and align subsequent samples to this
-                    -- point. If we didn't capture a start bit, then back to the idle or not busy condition
-                    if ( found_start = '0') then
-                        -- When the half counter has expired, we're at the middle of the start bit
-                        if ( baud_tick_cnt = 0 ) then
-                            -- Unlike in the TX core, we do not bother storing the start and stop bits, we just let them
-                            -- steer the control path and then store the actual data later
-                            if ( uart_rxd_qqq = RX_START_BIT ) then
-                                found_start         <= '1';
-                                -- From this point on, we're going to sample everything one full baud period apart
-                                baud_tick_cnt       <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length);
-                                rx_bit_cnt          <= to_unsigned(1, rx_bit_cnt'length);
+                    -- Looking for the start bit
+                    if (rx_busy = '0') then
+                        if (uart_rxd_qq = '0' and uart_rxd_qqq = '1') then
+                            rx_busy             <= '1';
+                            rx_bit_cnt          <= (others=>'0');
+
+                            found_start         <= '0';
+                            -- For the start bit, we set the counter to half the baud period
+                            baud_tick_cnt       <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length) srl 1;
+                            rx_overflow         <= '0';
+
+                        end if;
+                        rx_fifo_wr_en       <= '0';
+                    else
+                        -- Capture the start bit half a baud period into the transmission and align subsequent samples to this
+                        -- point. If we didn't capture a start bit, then back to the idle or not busy condition
+                        if ( found_start = '0') then
+                            -- When the half counter has expired, we're at the middle of the start bit
+                            if ( baud_tick_cnt = 0 ) then
+                                -- Unlike in the TX core, we do not bother storing the start and stop bits, we just let them
+                                -- steer the control path and then store the actual data later
+                                if ( uart_rxd_qqq = RX_START_BIT ) then
+                                    found_start         <= '1';
+                                    -- From this point on, we're going to sample everything one full baud period apart
+                                    baud_tick_cnt       <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length);
+                                    rx_bit_cnt          <= to_unsigned(1, rx_bit_cnt'length);
+                                else
+                                    -- Kick us out of looking for the start bit and back to idle
+                                    rx_busy             <= '0';
+                                end if;
                             else
-                                -- Kick us out of looking for the start bit and back to idle
-                                rx_busy             <= '0';
+                                baud_tick_cnt       <= baud_tick_cnt - 1;
                             end if;
                         else
-                            baud_tick_cnt       <= baud_tick_cnt - 1;
-                        end if;
-                    else
-                        -- When the full counter has expired, we're at the middle of a data or stop bit
-                        if ( baud_tick_cnt = 0 ) then
+                            -- When the full counter has expired, we're at the middle of a data or stop bit
+                            if ( baud_tick_cnt = 0 ) then
 
-                            -- Should be end of frame, so we check to make sure the stop bit is the right value
-                            -- and then go back to waiting for next frame
-                            if ( rx_bit_cnt = to_unsigned(RX_FRAME_LEN - 1, rx_bit_cnt'length) ) then
-                                -- Frame was good, so we can write to the FIFO
-                                if ( uart_rxd_qqq = RX_STOP_BIT ) then
-                                    if (rx_fifo_full = '0' and rx_fifo_ready = '1') then
-                                        rx_fifo_wr_data         <= rx_data_sr;
-                                        rx_fifo_wr_en           <= '1';
-                                        rx_frame_cnt            <= rx_frame_cnt + 1;
+                                -- Should be end of frame, so we check to make sure the stop bit is the right value
+                                -- and then go back to waiting for next frame
+                                if ( rx_bit_cnt = to_unsigned(RX_FRAME_LEN - 1, rx_bit_cnt'length) ) then
+                                    -- Frame was good, so we can write to the FIFO
+                                    if ( uart_rxd_qqq = RX_STOP_BIT ) then
+                                        if (rx_fifo_full = '0' and rx_fifo_ready = '1') then
+                                            rx_fifo_wr_data         <= rx_data_sr;
+                                            rx_fifo_wr_en           <= '1';
+                                            rx_frame_cnt            <= rx_frame_cnt + 1;
+                                        else
+                                            rx_overflow             <= '1';
+                                            rx_frame_err            <= rx_frame_err + 1;
+                                        end if;
+                                    -- Didn't encounter a stop bit when we should have, so junk this tranmission
+                                    -- and return to idle
                                     else
-                                        rx_overflow             <= '1';
+                                        rx_fifo_wr_en           <= '0';
                                         rx_frame_err            <= rx_frame_err + 1;
                                     end if;
-                                -- Didn't encounter a stop bit when we should have, so junk this tranmission
-                                -- and return to idle
+                                    -- Back to an idle condition, waiting for the next start bit
+                                    rx_busy                 <= '0';
+
                                 else
-                                    rx_fifo_wr_en           <= '0';
-                                    rx_frame_err            <= rx_frame_err + 1;
+                                    -- Reset our counter to sample one full baud period later
+                                    baud_tick_cnt           <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length);
+                                    rx_bit_cnt              <= rx_bit_cnt + 1;
+                                    -- The LSB is loaded into the top of the shift register...
+                                    rx_data_sr(7)           <= uart_rxd_qqq;
+                                    -- ...and then shifted down
+                                    rx_data_sr(6 downto 0)  <= rx_data_sr(7 downto 1);
                                 end if;
-                                -- Back to an idle condition, waiting for the next start bit
-                                rx_busy                 <= '0';
 
                             else
-                                -- Reset our counter to sample one full baud period later
-                                baud_tick_cnt           <= to_unsigned(BAUD_DIVISOR, baud_tick_cnt'length);
-                                rx_bit_cnt              <= rx_bit_cnt + 1;
-                                -- The LSB is loaded into the top of the shift register...
-                                rx_data_sr(7)           <= uart_rxd_qqq;
-                                -- ...and then shifted down
-                                rx_data_sr(6 downto 0)  <= rx_data_sr(7 downto 1);
+                                baud_tick_cnt       <= baud_tick_cnt - 1;
                             end if;
-
-                        else
-                            baud_tick_cnt       <= baud_tick_cnt - 1;
                         end if;
                     end if;
                 end if;

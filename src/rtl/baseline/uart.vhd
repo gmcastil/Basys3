@@ -123,32 +123,36 @@ begin
 
         uart_rx_i0: entity work.uart_rx
         generic map (
-            CLK_FREQ            => CLK_FREQ,
-            BAUD_RATE           => BAUD_RATE,
-            DEVICE              => DEVICE,
-            FIFO_SIZE           => "18Kb"
+            CLK_FREQ        => CLK_FREQ,
+            BAUD_RATE       => BAUD_RATE,
+            DEVICE          => DEVICE,
+            FIFO_SIZE       => "18Kb"
         )
         port map (
-            clk                 => clk,
-            rst                 => rst,
-            rd_data             => uart_rd_data_l,
-            rd_valid            => uart_rd_valid_l,
-            rd_ready            => uart_rd_ready_l,
-            rx_ready            => rx_ready,
-            rx_overflow         => rx_overflow,
-            rx_frame_cnt        => rx_frame_cnt,
-            rx_frame_err        => rx_frame_err,
-            uart_rxd            => uart_rxd
+            clk             => clk,
+            rst             => rst,
+            rd_data         => uart_rd_data_l,
+            rd_valid        => uart_rd_valid_l,
+            rd_ready        => uart_rd_ready_l,
+            rx_ready        => rx_ready,
+            rx_overflow     => rx_overflow,
+            rx_frame_cnt    => rx_frame_cnt,
+            rx_frame_err    => rx_frame_err,
+            uart_rxd        => uart_rxd
         );
 
         uart_tx_i0: entity work.uart_tx
+        generic map (
+            DEVICE          => DEVICE,
+            FIFO_SIZE       => "18Kb"
+        )
         port map (
             clk             => clk,
             rst             => rst,
             baud_tick       => baud_tick,
-            uart_wr_data    => uart_wr_data_l,
-            uart_wr_valid   => uart_wr_valid_l,
-            uart_wr_ready   => uart_wr_ready_l,
+            wr_data         => uart_wr_data_l,
+            wr_valid        => uart_wr_valid_l,
+            wr_ready        => uart_wr_ready_l,
             tx_frame_cnt    => tx_frame_cnt,
             uart_txd        => uart_txd
         );
