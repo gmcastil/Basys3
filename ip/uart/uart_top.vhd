@@ -6,7 +6,8 @@ entity uart_top is
     generic (
         DEVICE              : string            := "7SERIES";
         CLK_FREQ            : integer           := 100000000;
-        DEBUG_ILA           : boolean           := false
+        DEBUG_UART_AXI      : boolean           := false;
+        DEBUG_UART_CORE     : boolean           := false
     );
     port (
         clk                 : in    std_logic;
@@ -35,8 +36,10 @@ entity uart_top is
         axi4l_rdata         : out   std_logic_vector(31 downto 0);
         axi4l_rresp         : out   std_logic_vector(1 downto 0)
 
+        -- IRQ to global interrupt controller (GIC)
         irq                 : out   std_logic;
 
+        -- Serial input ports (should map to a pad or an IBUF / OBUF)
         rxd                 : in    std_logic;
         txd                 : out   std_logic
     );
@@ -47,8 +50,38 @@ architecture structural of uart_top is
 
 begin
 
-    g_debug_ila: if (DEBUG_ILA = true) generate
+    uart_core_i0: entity work.uart_core
+    generic (
+        DEVICE              = DEVICE,
+        CLK_FREQ            = CLK_FREQ,
+        DEBUG               = DEBUG_UART_CORE
+    );
+    port (
+        clk                 => clk,
+        rst                 => rst,
+        rx_rst              => rx_rst,
+        tx_rst              => tx_rst,
+        rx_enable           => rx_enable,
+        tx_enable           => tx_enable,
+        parity              => parity,
+        char                => char,
+        hw_flow_enable      => hw_flow_enable,
+        hw_flow_rts         => hw_flow_rts,
+        hw_flow_cts         => hw_flow_cts,
+        baud_div            => baud_div,
+        baud_cnt            => baud_cnt,
+        irq_enable          => irq_enable,
+        irq_mask            => irq_mask,
+        irq_clear           => irq_clear,
+        irq_active          => irq_active,
+        rx_data             => rx_data,
+        tx_data             => tx_data,
+        rxd                 => rxd,
+        txd                 => txd
+    );
 
-    end generate g_debug_ila;
+    g_debug_uart_axi: if (DEBUG_UART_AXI = true) generate
+
+    end generate g_debug_uart_axi;
 
 end architecture structural;
