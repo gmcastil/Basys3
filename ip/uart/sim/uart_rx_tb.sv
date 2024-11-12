@@ -31,6 +31,8 @@ module uart_rx_tb #(
   assign uart_clk = clk_100m00;
   assign uart_rst = rst_100m00;
 
+  localparam integer RST_ASSERT_CNT = 10;
+
   // Create 100MHz clock and a synchronous reset
   initial begin
     clk_100m00 = 1'b0;

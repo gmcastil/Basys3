@@ -7,7 +7,7 @@
 # data as a binary file that can be diffed with what was sent in.
 
 # Import common functions
-if ! source "../common/common.sh" >/dev/null 2>&1; then
+if ! source "../../common/common.sh" >/dev/null 2>&1; then
     printf '%s\n' "Error: Could not import common functions" >&2
     exit 1
 fi
@@ -17,13 +17,39 @@ if ! check_modelsim; then
     exit 1
 fi
 
-# Need to specify the simulator and version
-questa_version="22.2"
-sim_version="questa_fe_${questa_version}"
-
-ip_dir="../.."
+# Constant locations for source code
 rtl_dir="../rtl"
 tb_dir="./"
+tools_dir="${TOOLS_ROOT:-"/tools"}"
+
+# Establish Xilinx simulation library locations and export the appropriate
+# enviornment variable so that the modelsim.ini file can find things like the
+# UNISIM and XPM libraries
+questa_version="22.2"
+sim_version="questa_fe"
+vivado_version="2024.1"
+
+# If the caller never set this, we craft it ourself based on the tool versions
+# we defined earlier
+if [[ -z "${XILINX_SIMLIB_DIR+set}" ]]; then
+    XILINX_SIMLIB_DIR="${tools_dir}/lib/${vivado_version}/${sim_version}/${questa_version}"
+fi
+# Could get a bit more granular and verify that the libraries we want to
+# compile against actually exist here
+if [[ ! -d "${XILINX_SIMLIB_DIR}" ]]; then
+    err "Directory ${XILINX_SIMLIB_DIR} does not exist"
+    exit 1
+else
+    export XILINX_SIMLIB_DIR
+    printf 'Using Xilinx simulation libraries at %s\n' "${XILINX_SIMLIB_DIR}"
+fi
+
+# Location of Xilinx wrapper code (e.g., FIFO_SYNC_MACRO replacements)
+macros_dir="${XILINX_MACROS_DIR:-"../../macros"}"
+if [[ ! -d "${macros_dir}" ]]; then
+    err "Macros directory ${macros_dir} does not exist."
+    exit 1
+fi
 
 # Work directory
 work="work"
@@ -43,7 +69,7 @@ vmap work "${work}"
 vlog -work "${work}" -sv "${tb_dir}/uart_pkg.sv"
 
 # Compile DUT
-vcom -lint -work "${work}" -2008 "${ip_dir}/common/fifo_sync.vhd"
+vcom -lint -work "${work}" -2008 "${macros_dir}/fifo_sync.vhd"
 
 vcom -lint -work "${work}" -2008 "${rtl_dir}/skid_buffer.vhd"
 vcom -lint -work "${work}" -2008 "${rtl_dir}/baud_rate_gen.vhd"
@@ -62,9 +88,3 @@ vlog -work "${work}" -sv -define CAPTURE_READY_MODE=3 "${tb_dir}/uart_rx_tb.sv"
 
 # Done compiling, so turn this back on
 set +e
-
-#vsim -c \
-#    -do "run_uart_rx_tb.do" \
-#    -voptargs=+acc \
-#    "${work}.uart_rx_tb"
-#
