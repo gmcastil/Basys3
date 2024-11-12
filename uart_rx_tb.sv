@@ -17,41 +17,43 @@ module uart_rx_tb #(
   logic         uart_rxd;
   logic         uart_txd;
 
-  logic         clk_ext;
-  logic         rst_ext;
-  logic [5:0]   sys_clk;
-  logic [5:0]   sys_rst;
+  logic         clk_100m00;
+  logic         rst_100m00;
 
   logic         uart_clk;
   logic         uart_rst;
   logic         uart_ready;
 
   // Indicator that file has been sent to the UART
-  logic         done;
+  logic         uart_capture_done;
   uart_bfm bfm;
 
-  assign uart_clk = sys_clk[0];
-  assign uart_rst = sys_rst[0];
+  assign uart_clk = clk_100m00;
+  assign uart_rst = rst_100m00;
 
-  // Establish the 100MHz external oscillator provided by the board
+  // Create 100MHz clock and a synchronous reset
   initial begin
-    clk_ext = 1'b0;
+    clk_100m00 = 1'b0;
     forever begin
       #5ns;
-      clk_ext = ~clk_ext;
+      clk_100m00 = ~clk_100m00;
     end
+  end
+
+  initial begin
+      rst_100m00 = 1'b0;
+      @(posedge clk_100m00);
+      rst_100m00 = 1'b1;
+      repeat (RST_ASSERT_CNT) @(posedge clk_100m00);
+      rst_100m00 = 1'b0;
   end
 
   // Sequence of events which resets the UART, configures the BFM, sends the
   // data file and then ends the test when it's been sent
   initial begin
-    // External reset is not asserted and the RXD is pulled high (powering up or
-    // resetting the UART with something jabbering on the line is absolutely
-    // a use case to test, but for now, stick to setting this to 1)
-    rst_ext = 1'b0;
     uart_rxd = 1'b1;
     uart_mode = 2'b00;
-    done = 1'b0;
+    uart_capture_done = 1'b0;
 
     uart_wr_valid = 1'b0;
 
@@ -74,9 +76,9 @@ module uart_rx_tb #(
     #1200us; 
 
     @(posedge uart_clk);
-    done = 1'b1;
+    uart_capture_done = 1'b1;
     @(posedge uart_clk);
-    done = 1'b0;
+    uart_capture_done = 1'b0;
 
     $display("Done");
     $finish();
@@ -95,18 +97,7 @@ module uart_rx_tb #(
     .data             (uart_rd_data),
     .valid            (uart_rd_valid),
     .ready            (uart_rd_ready),
-    .done             (done)
-  );
-
-  clk_rst #(
-    .RST_LENGTH       (10),
-    .NUM_CLOCKS       (6)
-  )
-  clk_rst_i0 (
-    .clk_ext          (clk_ext),
-    .rst_ext          (rst_ext),
-    .sys_clk          (sys_clk),
-    .sys_rst          (sys_rst)
+    .done             (uart_capture_done)
   );
 
   uart #(
