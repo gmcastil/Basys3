@@ -77,6 +77,8 @@ architecture structural of uart is
 
 begin
 
+    uart_ready      <= rx_ready;
+
     g_uart_ports: if (UART_MODE = "NULL") generate
 
         uart_rd_data        <= (others=>'0');

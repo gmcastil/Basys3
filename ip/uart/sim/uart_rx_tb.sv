@@ -67,9 +67,8 @@ module uart_rx_tb #(
     @(negedge uart_rst);
     $display("UART reset complete");
 
-    repeat (10) @(posedge uart_clk);
-
-    // Now that the UART is done with reset (see note on ready and FIFO status)
+    wait(uart_ready);
+    $display("UART is ready");
     @(posedge uart_clk);
 
     $display("Sending %s to UART", SEND_FILE);

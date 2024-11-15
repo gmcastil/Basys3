@@ -78,6 +78,12 @@ architecture behavioral of uart_rx is
 
 begin
 
+    -- The reset and rx_fifo_ready signals are registered and the FIFO full indicator is driven by
+    -- the Xilinx FIFO primitive.  Registering this signal would yield a clock cycle where the FIFO
+    -- was full but we signal we are ready for data still, so we combine the registered values  in
+    -- this manner.
+    rx_ready    <= '1' when (rst = '0' and rx_fifo_ready = '1' and rx_fifo_full = '0') else '0';
+
     -- First, need to cross the input serial data stream into the native clock
     -- domain for this module
     process(clk)
@@ -110,7 +116,6 @@ begin
                 rx_fifo_wr_en       <= '0';
 
                 -- Status
-                rx_ready            <= '0';
                 rx_overflow         <= '0';
                 rx_frame_cnt        <= (others=>'0');
                 rx_frame_err        <= (others=>'0');
