@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Runs a simulation for the skid buffer and synchronous FIFO. The skid buffer is
+# a small design unit, but its function is critically important in not dropping
+# data at edge conditions that are hard to simulate in an overall design (it
+# also needs to operate under conditions that may not arise in the original
+# application).
+
+# Common testbench setup script
+setup_sim="setup_sim.sh"
+
+# Import common functions
+if ! source "${setup_sim}"; then
+    printf '%s\n' "Error: Could not setup script environment" >&2
+    exit 1
+fi
+
+# Work directory
+work="work"
+
+# Exit on errors while we're compiling 
+set -e 
+
+# Remove existing ModelSim work library
+if [[ -d "${work}" ]]; then
+    rm -rf "${work}"
+fi
+
+vlib "${work}"
+vmap work "${work}"
+
+vcom -lint -work "${work}" -2008 "${macros_dir}/fifo_sync.vhd"
+vcom -lint -work "${work}" -2008 "${rtl_dir}/skid_buffer.vhd"
+
+vlog -work "${work}" -sv "${tb_dir}/skid_buffer_tb.sv"
+
+# Done compiling, so turn this back on
+set +e
