@@ -212,7 +212,7 @@ begin
         FIFO_WIDTH      => 8,
         FIFO_SIZE       => "18Kb",
         FWFT            => false,
-        DO_REG          => 0,
+        DO_REG          => 1,
         DEBUG           => false
     )
     port map (

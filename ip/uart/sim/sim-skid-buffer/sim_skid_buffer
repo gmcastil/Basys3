@@ -7,11 +7,11 @@
 # application).
 
 # Common testbench setup script
-setup_sim="setup_sim.sh"
+setup_sim="../common/setup.sh"
 
 # Import common functions
 if ! source "${setup_sim}"; then
-    printf '%s\n' "Error: Could not setup script environment" >&2
+    printf '%s\n' "Error: Could not setup simulation environment" >&2
     exit 1
 fi
 
@@ -32,7 +32,8 @@ vmap work "${work}"
 vcom -lint -work "${work}" -2008 "${macros_dir}/fifo_sync.vhd"
 vcom -lint -work "${work}" -2008 "${rtl_dir}/skid_buffer.vhd"
 
-vlog -work "${work}" -sv "${tb_dir}/skid_buffer_tb.sv"
+vlog -work "${work}" -sv "skid_buffer_tb.sv"
 
 # Done compiling, so turn this back on
 set +e
+
