@@ -43,7 +43,7 @@ module skid_buffer_tb ();
     byte write_bytes[$];
     byte read_bytes[$];
 
-    localparam integer NUM_BYTES = 16;
+    localparam integer NUM_BYTES = 1024;
 
     // Main body of testbench
     initial begin
@@ -71,7 +71,7 @@ module skid_buffer_tb ();
                     read_bytes.push_back(rd_data);
                 end
                 // Randomly decide when to assert / deassert the read
-                if ($urandom_range(0, 100) < 30) begin
+                if ($urandom_range(0, 100) < 90) begin
                     rd_ready = 1'b0;
                 end else begin
                     rd_ready = 1'b1;
@@ -120,7 +120,7 @@ module skid_buffer_tb ();
         .FIFO_WIDTH         (8),
         .FIFO_SIZE          ("18Kb"),
         .FWFT               (0),
-        .DO_REG             (0),
+        .DO_REG             (1),
         .DEBUG              (0)
     ) fifo_inst (
         .clk                (clk),
