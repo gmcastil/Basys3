@@ -11,7 +11,9 @@ entity uart_rx is
         -- Target device
         DEVICE      : string        := "7SERIES";
         -- FIFO size
-        FIFO_SIZE   : string        := "18Kb"
+        FIFO_SIZE   : string        := "18Kb";
+        -- Enable additional FIFO pipeline stage
+        DO_REG      : integer       := 1
     );
     port (
         clk             : in    std_logic;
@@ -80,7 +82,7 @@ begin
 
     -- The reset and rx_fifo_ready signals are registered and the FIFO full indicator is driven by
     -- the Xilinx FIFO primitive.  Registering this signal would yield a clock cycle where the FIFO
-    -- was full but we signal we are ready for data still, so we combine the registered values  in
+    -- was full but we signal we are ready for data still, so we combine the registered values in
     -- this manner.
     rx_ready    <= '1' when (rst = '0' and rx_fifo_ready = '1' and rx_fifo_full = '0') else '0';
 
@@ -212,7 +214,7 @@ begin
         FIFO_WIDTH      => 8,
         FIFO_SIZE       => "18Kb",
         FWFT            => false,
-        DO_REG          => 1,
+        DO_REG          => DO_REG,
         DEBUG           => false
     )
     port map (
@@ -229,14 +231,14 @@ begin
 
     skid_buffer_rx: entity work.skid_buffer
     generic map (
-        DATA_WIDTH      => 8
+        DATA_WIDTH      => 8,
+        DO_REG          => DO_REG
     )
     port map (
         clk             => clk,
         rst             => rst,
         fifo_rd_data    => rx_fifo_rd_data,
         fifo_rd_en      => rx_fifo_rd_en,
-        fifo_full       => rx_fifo_full,
         fifo_empty      => rx_fifo_empty,
         fifo_ready      => rx_fifo_ready,
         rd_data         => rd_data,

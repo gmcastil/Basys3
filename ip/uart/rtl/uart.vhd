@@ -11,7 +11,9 @@ entity uart is
         -- Desired baud rate
         BAUD_RATE           : integer       := 115200;
         -- Enable loopback mode (data received on RXD will be sent out TXD)
-        UART_MODE           : string        := "NORMAL"
+        UART_MODE           : string        := "NORMAL";
+        RX_FIFO_DO_REG      : integer       := 1;
+        TX_FIFO_DO_REG      : integer       := 1
     );
     port (
         clk                 : in    std_logic;
@@ -128,7 +130,8 @@ begin
             CLK_FREQ        => CLK_FREQ,
             BAUD_RATE       => BAUD_RATE,
             DEVICE          => DEVICE,
-            FIFO_SIZE       => "18Kb"
+            FIFO_SIZE       => "18Kb",
+            DO_REG          => RX_FIFO_DO_REG
         )
         port map (
             clk             => clk,
@@ -146,7 +149,8 @@ begin
         uart_tx_i0: entity work.uart_tx
         generic map (
             DEVICE          => DEVICE,
-            FIFO_SIZE       => "18Kb"
+            FIFO_SIZE       => "18Kb",
+            DO_REG          => TX_FIFO_DO_REG
         )
         port map (
             clk             => clk,

@@ -5,16 +5,20 @@ use ieee.numeric_std.all;
 entity uart_tx is
     generic (
         -- Target device
-        DEVICE          : string := "7SERIES";
+        DEVICE          : string    := "7SERIES";
         -- FIFO size
-        FIFO_SIZE       : string := "18Kb"
+        FIFO_SIZE       : string    := "18Kb";
+        -- Enable additional FIFO pipeline stage
+        DO_REG          : integer   := 1 
     );
     port (
         clk             : in    std_logic;
         rst             : in    std_logic;
 
+        -- Baud rate tick from baud rate generator
         baud_tick       : in    std_logic;
 
+        -- UART TX write interface
         wr_data         : in    std_logic_vector(7 downto 0);
         wr_valid        : in    std_logic;
         wr_ready        : out   std_logic;
@@ -173,7 +177,7 @@ begin
         FIFO_WIDTH      => 8,
         FIFO_SIZE       => "18Kb",
         FWFT            => false,
-        DO_REG          => 0,
+        DO_REG          => DO_REG,
         DEBUG           => false
     )
     port map (
@@ -190,14 +194,14 @@ begin
 
     skid_buffer_tx: entity work.skid_buffer
     generic map (
-        DATA_WIDTH      => 8
+        DATA_WIDTH      => 8,
+        DO_REG          => DO_REG
     )
     port map (
         clk             => clk,
         rst             => rst,
         fifo_rd_data    => tx_fifo_rd_data,
         fifo_rd_en      => tx_fifo_rd_en,
-        fifo_full       => tx_fifo_full,
         fifo_empty      => tx_fifo_empty,
         fifo_ready      => tx_fifo_ready,
         rd_data         => tx_data,
