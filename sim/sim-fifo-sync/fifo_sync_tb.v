@@ -100,17 +100,17 @@ module fifo_sync_tb #(
       .FIFO_WIDTH		(FIFO_WIDTH),
       .FIFO_SIZE		(FIFO_SIZE),
       .DO_REG		    (DO_REG),
-      .DEBUG        (DEBUG)
+      .DEBUG            (DEBUG)
   )
   fifo_sync_i0 (
-      .clk		      (clk),
-      .rst		      (rst),
+      .clk		        (clk),
+      .rst		        (rst),
       .wr_en		    (wr_en),
-      .wr_data		  (wr_data),
+      .wr_data		    (wr_data),
       .rd_en		    (rd_en),
-      .rd_data		  (rd_data),
+      .rd_data		    (rd_data),
       .ready		    (ready),
-      .full		      (full),
+      .full		        (full),
       .empty		    (empty)
   );
 

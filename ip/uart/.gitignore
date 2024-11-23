@@ -1,5 +1,0 @@
-# Ignore the binary blobs we use for testing
-*.bin
-vsim.wlf
-wlf*
-.nfs*
