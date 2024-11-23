@@ -3,8 +3,9 @@ use ieee.std_logic_1164.all;
 
 entity basys3_top is
     generic (
-        UART_DEBUG          : boolean       := false
-   );
+        UART_RX_FIFO_DO_REG     : natural   := 0;
+        UART_TX_FIFO_DO_REG     : natural   := 0
+    );
     port (
         -- 100MHz external clock
         clk_ext_pad         : in    std_logic;
@@ -128,7 +129,9 @@ begin
         DEVICE              => "7SERIES",
         CLK_FREQ            => 100000000,
         BAUD_RATE           => 115200,
-        UART_MODE           => "LOOPBACK"
+        UART_MODE           => "LOOPBACK",
+        RX_FIFO_DO_REG      => UART_RX_FIFO_DO_REG,
+        TX_FIFO_DO_REG      => UART_TX_FIFO_DO_REG
     )
     port map (
         clk                 => clk_100m00,
