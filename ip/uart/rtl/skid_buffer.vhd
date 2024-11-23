@@ -39,7 +39,7 @@ architecture behavioral of skid_buffer is
     --
     --      fifo_rd_valid   -> (skid_valid) -> rd_valid
     --
-    -- Data is generally read from the FIFO when the FIFO is ready and non-empty, and the 
+    -- Data is generally read from the FIFO when the FIFO is ready and non-empty, and the
     -- pipeline is able to consume it. If data is ready at the output but the consumer is not ready, then
     -- data is temporarily stored in the skid register and the read pipeline halts.
 
@@ -54,12 +54,11 @@ begin
     begin
         if rising_edge(clk) then
             if (rst = '1') then
-                fifo_rd_valid   <= '0';
-                fifo_rd_valid_i <= '0';
+                -- Resetting the FIFO read valid signals unnecessarily complicates the clock enable
+                -- to the `rd_data` register and does not need to be done explicitly.
                 skid_valid      <= '0';
                 rd_valid        <= '0';
             else
-
                 -- The intent of this conditional is that the `fifo_rd_valid` tracks with the
                 -- `fifo_rd_data` for both the pipelined and non-pipelined cases. When DO_REG is 0,
                 -- the unnecessary logic should get pruned away by synthesis.
