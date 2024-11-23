@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
-module skid_buffer_tb ();
+module skid_buffer_tb #(
+    parameter   int     DO_REG  = 0
+    ) ();
 
     localparam int RST_ASSERT_CNT = 10;
 
@@ -120,7 +122,7 @@ module skid_buffer_tb ();
         .FIFO_WIDTH         (8),
         .FIFO_SIZE          ("18Kb"),
         .FWFT               (0),
-        .DO_REG             (1),
+        .DO_REG             (DO_REG),
         .DEBUG              (0)
     ) fifo_inst (
         .clk                (clk),
@@ -135,13 +137,13 @@ module skid_buffer_tb ();
     );
 
     skid_buffer #(
-        .DATA_WIDTH         (8)
+        .DATA_WIDTH         (8),
+        .DO_REG             (DO_REG)
     ) skid_inst (
         .clk                (clk),
         .rst                (rst),
         .fifo_rd_data       (fifo_rd_data),
         .fifo_rd_en         (fifo_rd_en),
-        .fifo_full          (fifo_full),
         .fifo_empty         (fifo_empty),
         .fifo_ready         (fifo_ready),
         .rd_data            (rd_data),
