@@ -13,13 +13,9 @@ if ! source "../common/sim.conf"; then
 fi
 print_sim_setup
 
-# Exit on errors while we're compiling 
-set -e 
-
+if_dir="${sim_dir}/interfaces"
 rtl_dir="${baseline_src_dir}/rtl"
 tb_dir="./"
-
-rtl_dir="${baseline_src_dir}/rtl"
 
 # Work directory
 work="work"
@@ -28,12 +24,17 @@ if [[ -d "${work}" ]]; then
     rm -rf "${work}"
 fi
 
+# Exit on errors while we're compiling 
+set -e 
+
 vlib "${work}"
 vmap work "${work}"
 
-vcom -lint -work "${work}" -2008 "${rtl_dir}/axi4l_regs.vhd"
-
+vlog -work "${work}" -sv "${if_dir}/axi4l_if.sv"
+vlog -work "${work}" -sv "${bfm_dir}/axi4l_pkg.sv"
 vlog -work "${work}" -sv "${tb_dir}/axi4l_regs_tb.sv"
+
+vcom -lint -work "${work}" -2008 "${rtl_dir}/axi4l_regs.vhd"
 
 # Done compiling, so turn this back on
 set +e
