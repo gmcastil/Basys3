@@ -34,28 +34,6 @@ interface axi4l_if #(
     logic                       rvalid;
     logic                       rready;
 
-    // AXI4-Lite read and write response types
-    typedef enum logic [1:0] {
-        RESP_OKAY       = 2'b00,    // Transaction completed successfully
-        RESP_EXOKAY     = 2'b01,    // Exclusvie access successful
-        RESP_SLVERR     = 2'b10,    // Slave error
-        RESP_DECERR     = 2'b11     // Decode error
-    } axi4l_resp_t;
-
-    // AXI4-Lite read and write transactions (use widths derived from the interface)
-    typedef struct {
-        logic [ADDR_WIDTH-1:0] waddr;
-        logic [DATA_WIDTH-1:0] wdata;
-        logic [(DATA_WIDTH/8)-1:0] wstrb;
-        axi4l_resp_t bresp;
-    } axi4l_write_t;
-    
-    typedef struct {
-        logic [ADDR_WIDTH-1:0] raddr;
-        logic [DATA_WIDTH-1:0] rdata;
-        axi4l_resp_t rresp;
-    } axi4l_read_t;
-
     clocking cb @(posedge axi4l_aclk);
         input   awready, wready, bvalid, arready, rvalid, rdata, bresp, rresp;
         output  awaddr, awvalid, wdata, wstrb, wvalid, bready, araddr, arvalid, rready;
