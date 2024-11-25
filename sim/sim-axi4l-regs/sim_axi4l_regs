@@ -30,8 +30,8 @@ set -e
 vlib "${work}"
 vmap work "${work}"
 
-vlog -work "${work}" -sv "${if_dir}/axi4l_if.sv"
 vlog -work "${work}" -sv "${bfm_dir}/axi4l_pkg.sv"
+vlog -work "${work}" -sv "${if_dir}/axi4l_if.sv"
 vlog -work "${work}" -sv "${tb_dir}/axi4l_regs_tb.sv"
 
 vcom -lint -work "${work}" -2008 "${rtl_dir}/axi4l_regs.vhd"
