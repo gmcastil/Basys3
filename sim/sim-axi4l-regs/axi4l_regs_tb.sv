@@ -14,6 +14,10 @@ module axi4l_regs_tb ();
 
     // AXI4-Lite master BFM
     axi4l_pkg::m_axi4l_bfm m_bfm;
+
+    axi4l_pkg::axi4l_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) wr_txn;
+    axi4l_pkg::axi4l_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) rd_txn;
+
     // AXI4-Lite interface needs to be instantiated before it can be referenced in simulation code
     axi4l_if #(
         .ADDR_WIDTH     (AXI_ADDR_WIDTH),
@@ -42,6 +46,9 @@ module axi4l_regs_tb ();
     // Main testbench body
     initial begin
         m_bfm = new(axi4l_if_i0);
+        wr_txn = new();
+        rd_txn = new();
+
         #100ns;
         $finish;
     end

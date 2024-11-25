@@ -11,6 +11,31 @@ package axi4l_pkg;
         RESP_DECERR     = 2'b11     // Decode error
     } axi4l_resp_t;
 
+//    // AXI4-Lite read and write transactions (use widths derived from the interface)
+//    typedef struct {
+//        logic [ADDR_WIDTH-1:0] waddr;
+//        logic [DATA_WIDTH-1:0] wdata;
+//        logic [(DATA_WIDTH/8)-1:0] wstrb;
+//        axi4l_resp_t bresp;
+//    } axi4l_write_t;
+//    
+//    typedef struct {
+//        logic [ADDR_WIDTH-1:0] raddr;
+//        logic [DATA_WIDTH-1:0] rdata;
+//        axi4l_resp_t rresp;
+//    } axi4l_read_t;
+
+    class axi4l_txn #(
+        parameter   int ADDR_WIDTH  = 32,
+        parameter   int DATA_WIDTH  = 32
+    );
+
+        function new();
+
+        endfunction
+
+    endclass
+
     class m_axi4l_bfm;
 
         virtual axi4l_if vif;
@@ -27,14 +52,14 @@ package axi4l_pkg;
         endfunction
 
         // Perform and AXI4-Lite write transaction
-        task write(ref axi4l_write_t txn);
+        task write(axi4l_txn txn);
             // Can check for reset here
         endtask
 
-        // Perform and AXI4-Lite read transaction
-        task read(ref axi4l_read_t txn);
-            // Can check for reset here
-        endtask
+//        // Perform and AXI4-Lite read transaction
+//        task read(ref axi4l_read_t txn);
+//            // Can check for reset here
+//        endtask
 
         task monitor_reset();
             forever begin

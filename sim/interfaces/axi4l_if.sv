@@ -7,9 +7,6 @@ interface axi4l_if #(
     input   logic   axi4l_arstn
 );
 
-    // Only import the response type, since it is needed for transactions
-    import axi4l_pkg::axi4l_resp_t;
-
     // Write Address Channel
     logic [ADDR_WIDTH-1:0]      awaddr;
     logic                       awvalid;
@@ -36,6 +33,14 @@ interface axi4l_if #(
     logic [1:0]                 rresp;
     logic                       rvalid;
     logic                       rready;
+
+    // AXI4-Lite read and write response types
+    typedef enum logic [1:0] {
+        RESP_OKAY       = 2'b00,    // Transaction completed successfully
+        RESP_EXOKAY     = 2'b01,    // Exclusvie access successful
+        RESP_SLVERR     = 2'b10,    // Slave error
+        RESP_DECERR     = 2'b11     // Decode error
+    } axi4l_resp_t;
 
     // AXI4-Lite read and write transactions (use widths derived from the interface)
     typedef struct {
