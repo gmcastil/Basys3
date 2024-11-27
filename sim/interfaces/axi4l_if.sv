@@ -3,8 +3,8 @@ interface axi4l_if #(
     parameter int   ADDR_WIDTH = 32,
     parameter int   DATA_WIDTH = 32
 ) (
-    input   logic   axi4l_aclk,
-    input   logic   axi4l_arstn
+    input   logic   clk,
+    input   logic   arstn
 );
 
     // Write Address Channel
@@ -34,21 +34,21 @@ interface axi4l_if #(
     logic                       rvalid;
     logic                       rready;
 
-    clocking cb @(posedge axi4l_aclk);
+    clocking cb @(posedge clk);
         input   awready, wready, bvalid, arready, rvalid, rdata, bresp, rresp;
         output  awaddr, awvalid, wdata, wstrb, wvalid, bready, araddr, arvalid, rready;
     endclocking
 
     modport master (
-        input   axi4l_aclk,
-        input   axi4l_arstn,
+        input   clk,
+        input   arstn,
         output  awaddr, awvalid, wdata, wstrb, wvalid, bready, araddr, arvalid, rready,
         input   awready, wready, bvalid, arready, rvalid, rdata, bresp, rresp
     );
 
     modport slave (
-        input   axi4l_aclk,
-        input   axi4l_arstn,
+        input   clk,
+        input   arstn,
         input   awaddr, awvalid, wdata, wstrb, wvalid, bready, araddr, arvalid, rready,
         output  awready, wready, bvalid, arready, rvalid, rdata, bresp, rresp
     );

@@ -17,12 +17,12 @@ package axi4l_pkg;
         parameter   int DATA_WIDTH  = 32
     );
 
-        logic [ADDR_WIDTH-1:0] rd_addr;
-        logic [DATA_WIDTH-1:0] rd_data;
-        axi4l_resp_t rd_resp;
+        logic [ADDR_WIDTH-1:0] araddr;
+        logic [DATA_WIDTH-1:0] rdata;
+        axi4l_resp_t rresp;
 
-        function new(logic [ADDR_WIDTH-1:0] rd_addr);
-            this.rd_addr = rd_addr;
+        function new(logic [ADDR_WIDTH-1:0] araddr);
+            this.araddr = araddr;
         endfunction
 
     endclass
@@ -33,13 +33,13 @@ package axi4l_pkg;
         parameter   int DATA_WIDTH  = 32
     );
         
-        logic [ADDR_WIDTH-1:0] waddr;
+        logic [ADDR_WIDTH-1:0] awaddr;
         logic [DATA_WIDTH-1:0] wdata;
         logic [(DATA_WIDTH/8)-1:0] wstrb;
         axi4l_resp_t wr_resp;
 
-        function new(logic [ADDR_WIDTH-1:0] waddr, logic [DATA_WIDTH-1:0] wdata, logic [(DATA_WIDTH/8)-1:0] wstrb);
-            this.waddr = waddr;
+        function new(logic [ADDR_WIDTH-1:0] awaddr, logic [DATA_WIDTH-1:0] wdata, logic [(DATA_WIDTH/8)-1:0] wstrb);
+            this.awaddr = awaddr;
             this.wdata = wdata;
             this.wstrb = wstrb;
         endfunction
@@ -108,8 +108,8 @@ package axi4l_pkg;
             end
 
             sem_rd.get();
-            $display("Obtained AXI4-Lite read access");
-            rd_count++;
+            this.vif.arvalid = 1'b1;
+            this.vif.araddr = rd_txn.araddr;
             sem_rd.put();
             $display("Read count: %0d", rd_count);
         endtask
@@ -119,14 +119,14 @@ package axi4l_pkg;
             this.rst_active = 0;
             forever begin
                 @(this.vif.cb);
-                if (this.vif.axi4l_arstn == 0) begin
+                if (this.vif.arstn == 0) begin
                     this.vif.awvalid = 1'b0;
                     this.vif.wvalid = 1'b0;
                     this.vif.bready = 1'b0;
                     this.vif.arvalid = 1'b0;
                     this.vif.rready = 1'b0;
                     // Wait for reset to deassert
-                    @(posedge vif.axi4l_arstn);
+                    @(posedge vif.arstn);
                     this.rst_active = 0;
                     $display(`ANSI_GREEN, "AXI4-Lite master reset deasserted", `ANSI_RESET);
                 end

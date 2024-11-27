@@ -24,8 +24,8 @@ module axi4l_regs_tb ();
         .DATA_WIDTH     (AXI_DATA_WIDTH)
     )
     axi4l_if_i0 (
-        .axi4l_aclk     (axi4l_aclk),
-        .axi4l_arstn    (axi4l_arstn)
+        .clk            (axi4l_aclk),
+        .arstn          (axi4l_arstn)
     );
 
     // Create our 100MHz clock
@@ -47,11 +47,10 @@ module axi4l_regs_tb ();
     initial begin
         m_bfm = new(axi4l_if_i0);
 
-        wr_txn = new();
-        rd_txn = new();
+        @(posedge axi4l_arstn);
+        rd_txn = new(32'h0);
 
-        fork m_bfm.write(wr_txn); join
-        fork m_bfm.write(wr_txn); join
+        m_bfm.read(rd_txn);
 
         #100ns;
         $finish;
