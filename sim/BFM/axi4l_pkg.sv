@@ -1,6 +1,3 @@
-`define ANSI_GREEN "\033[32m"
-`define ANSI_RESET "\033[0m"
-
 package axi4l_pkg;
 
     // AXI4-Lite read and write response types
@@ -20,6 +17,7 @@ package axi4l_pkg;
         logic [ADDR_WIDTH-1:0] araddr;
         logic [DATA_WIDTH-1:0] rdata;
         axi4l_resp_t rresp;
+        int index;
 
         function new(logic [ADDR_WIDTH-1:0] araddr);
             this.araddr = araddr;
@@ -58,19 +56,17 @@ package axi4l_pkg;
         semaphore sem_wr;
         semaphore sem_rd;
 
-        integer wr_count;
-        integer rd_count;
+        axi4l_rd_txn #(ADDR_WIDTH, DATA_WIDTH) rd_txn_results[$];
+        axi4l_wr_txn #(ADDR_WIDTH, DATA_WIDTH) wr_txn_results[$];
 
         // Master BFM constructor
         function new(virtual axi4l_if vif);
 
             // Initialize instance variables
             this.vif = vif;
-            this.wr_count = 0;
-            this.rd_count = 0;
 
-            // Each read and write task gets it own semaphore to lock access
-            // to the read or write portion of the bus.
+            // Each read and write task gets it own semaphore to lock
+            // access to the read or write portion of the bus.
             sem_wr = new(1);
             sem_rd = new(1);
 
@@ -94,13 +90,16 @@ package axi4l_pkg;
             this.vif.wdata = wr_txn.wdata;
             this.vif.wstrb = wr_txn.wstrb;
 
-            this.wr_count++;
             sem_wr.put();
-            $display("Write count: %0d", wr_count);
         endtask
 
         // Perform and AXI4-Lite read transaction
         task read(axi4l_rd_txn rd_txn);
+
+            // Total number of read transactions (used as index for read transaction results)
+            static int rd_count = 0;
+
+            event araddr_done;
 
             if (this.vif.arstn == 1'b0) begin
                 $display("Read ignored while in reset");
@@ -108,10 +107,42 @@ package axi4l_pkg;
             end
 
             sem_rd.get();
-            this.vif.arvalid = 1'b1;
-            this.vif.araddr = rd_txn.araddr;
+
+            // Background two processes, one to wait for the address phase to be complete and signal
+            // to the other to wait for the data phase to be complete
+            fork
+                // Wait until the read address handshake is complete and then fire an event
+                begin
+                    this.vif.araddr <= rd_txn.araddr;
+                    this.vif.arvalid <= 1'b1;
+                    @(this.vif.cb);
+                    while (! (this.vif.arvalid && this.vif.arready) ) begin
+                        @(this.vif.cb);
+                    end
+                    // Drive the address to meaningless values
+                    this.vif.araddr <= 'hX;
+                    this.vif.arvalid <= 1'b0;
+                    $display("Read addr: %h", rd_txn.araddr);
+                    ->araddr_done;
+                end
+                // Once the event has fired, we capture the data
+                begin
+                    @araddr_done;
+                    this.vif.rready <= 1'b1;
+                    @(this.vif.cb);
+                    while (! (this.vif.rvalid && this.vif.rready) ) begin
+                        @(this.vif.cb);
+                    end
+                    this.vif.rready <= 1'b0;
+                    $display("Read data: %h", this.vif.rdata);
+                    $display("Read resp: %d", this.vif.rresp);
+                end
+            // This requires that both of these tasks complete before rejoining the main thread
+            join
+            rd_txn.index = rd_count++;
+            rd_txn_results.push_back(rd_txn);
+
             sem_rd.put();
-            $display("Read count: %0d", rd_count);
         endtask
 
         task monitor_reset();
@@ -128,7 +159,7 @@ package axi4l_pkg;
                     // Wait for reset to deassert
                     @(posedge vif.arstn);
                     this.rst_active = 0;
-                    $display(`ANSI_GREEN, "AXI4-Lite master reset deasserted", `ANSI_RESET);
+                    $display("AXI4-Lite master reset deasserted");
                 end
             end
         endtask

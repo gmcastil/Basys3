@@ -43,17 +43,46 @@ module axi4l_regs_tb ();
         axi4l_arstn = 1;
     end
 
+    logic [31:0] raddr = 0;
     // Main testbench body
     initial begin
+        $display("Starting simulation...");
         m_bfm = new(axi4l_if_i0);
 
         @(posedge axi4l_arstn);
-        rd_txn = new(32'h0);
 
-        m_bfm.read(rd_txn);
+        @(axi4l_if_i0.cb);
 
-        #100ns;
+        for (int i = 0; i < 4; i++) begin
+            rd_txn = new(raddr);
+            m_bfm.read(rd_txn);
+            raddr++;
+        end
+
         $finish;
+    end
+
+    // Super sloppy and non-compliant axi slave to wiggle my tasks
+    logic [31:0] rdata = 0;
+
+    always @(axi4l_if_i0.cb) begin
+        if (axi4l_arstn == 1'b0) begin
+            axi4l_if_i0.arready <= 1'b0;
+            axi4l_if_i0.rdata <= 32'h0;
+            axi4l_if_i0.rvalid <= 1'b0;
+        end else begin
+            if (axi4l_if_i0.arvalid && !axi4l_if_i0.arready) begin
+                axi4l_if_i0.arready <= 1'b1;
+                axi4l_if_i0.rdata <= rdata;
+                rdata++;
+                axi4l_if_i0.rvalid <= 1'b1;
+            end else begin
+                if (axi4l_if_i0.arvalid && axi4l_if_i0.arready) begin
+                    axi4l_if_i0.arready <= 1'b0;
+                    axi4l_if_i0.rdata <= 32'hdeadbeef;
+                end
+            end
+        end
     end
 
 endmodule

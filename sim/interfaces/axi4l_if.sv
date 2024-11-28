@@ -1,4 +1,3 @@
-
 interface axi4l_if #(
     parameter int   ADDR_WIDTH = 32,
     parameter int   DATA_WIDTH = 32

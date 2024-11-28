@@ -3,6 +3,7 @@ set StdArithNoWarnings 1
 set NumericStdNoWarnings 1
 
 vsim -c \
+    -classdebug \
     -voptargs=+acc \
     "work.axi4l_regs_tb"
 
