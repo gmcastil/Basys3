@@ -4,23 +4,27 @@ import axi4l_pkg::*;
 
 module axi4l_regs_tb ();
 
-    parameter int RST_ASSERT_CNT = 10;
+    parameter int RST_ASSERT_CNT    = 10;
 
-    parameter int AXI_ADDR_WIDTH = 32;
-    parameter int AXI_DATA_WIDTH = 32;
+    parameter int AXI_ADDR_WIDTH    = 32;
+    parameter int AXI_DATA_WIDTH    = 32;
+    // These require that the register details in the DUT are set as constants or brought in as an
+    // external package with a configuration. For now, set these here and then later we'll deal with
+    // the complexity of configuration (and especially those in a mixedsvvh environment).
+    parameter int REG_ADDR_WIDTH    = 4;
+    parameter int REG_DATA_WIDTH    = 32;
 
     logic axi4l_aclk = 0;
     logic axi4l_arstn = 1;
 
     // Register Interface Signals
-    wire [$clog2(NUM_REGS)-1:0]     reg_addr;
-    wire [AXI_DATA_WIDTH-1:0]       reg_wdata;
-    wire [(AXI_DATA_WIDTH/8)-1:0]   reg_wstrb;
-    wire                            reg_wren;
-    wire [AXI_DATA_WIDTH-1:0]       reg_rdata;
-    wire                            reg_rden;
-    wire                            reg_req;
-    wire                            reg_ack;
+    logic [3:0]                     reg_addr;
+    logic [REG_DATA_WIDTH-1:0]      reg_wdata;
+    logic                           reg_wren;
+    logic [REG_DATA_WIDTH-1:0]      reg_rdata;
+    logic                           reg_rden;
+    logic                           reg_req;
+    logic                           reg_ack;
 
     // AXI4-Lite master BFM
     axi4l_pkg::m_axi4l_bfm m_bfm;
@@ -53,20 +57,19 @@ module axi4l_regs_tb ();
         axi4l_arstn = 1;
     end
 
-    logic [31:0] raddr = 0;
     // Main testbench body
     initial begin
         $display("Starting simulation...");
+
         m_bfm = new(axi4l_if_i0);
 
         @(posedge axi4l_arstn);
+        repeat (10) @(axi4l_if_i0.cb);
 
-        @(axi4l_if_i0.cb);
-
-        for (int i = 0; i < 4; i++) begin
-            rd_txn = new(raddr);
+        for (int addr = 0; addr < 4; addr = addr + 4) begin
+            rd_txn = new(addr);
             m_bfm.read(rd_txn);
-            raddr++;
+            rd_txn.display();
         end
 
         $finish;
@@ -75,8 +78,8 @@ module axi4l_regs_tb ();
     axi4l_regs #(
         .AXI_ADDR_WIDTH                 (AXI_ADDR_WIDTH),
         .AXI_DATA_WIDTH                 (AXI_DATA_WIDTH),
-        .NUM_REGS                       (NUM_REGS),
-        .ACCESS_CTRL                    (ACCESS_CTRL)
+        .REG_ADDR_WIDTH                 (REG_ADDR_WIDTH),
+        .REG_DATA_WIDTH                 (REG_DATA_WIDTH)
     )
     axi4l_regs_i0 (
         .clk                            (axi4l_aclk),
@@ -100,7 +103,6 @@ module axi4l_regs_tb ();
         .s_axi_rready                   (axi4l_if_i0.rready),
         .reg_addr                       (reg_addr),
         .reg_wdata                      (reg_wdata),
-        .reg_wstrb                      (reg_wstrb),
         .reg_wren                       (reg_wren),
         .reg_rdata                      (reg_rdata),
         .reg_rden                       (reg_rden),
