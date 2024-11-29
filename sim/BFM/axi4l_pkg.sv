@@ -23,6 +23,27 @@ package axi4l_pkg;
             this.araddr = araddr;
         endfunction
 
+        // Display read transaction data
+        function display();
+            if (ADDR_WIDTH == 32) begin
+                $display("Read Addr: 0x%08h", this.araddr);
+            end else if (ADDR_WIDTH == 64) begin
+                $display("Read Addr: 0x%08h_%08h", this.araddr[63:32], this.araddr[31:0]);
+            end else begin
+                $display("Read Addr: 0x%h", this.araddr);
+            end
+
+            if (DATA_WIDTH == 32) begin
+                $display("Read Data: 0x%08h", this.rdata);
+            end else if (DATA_WIDTH == 64) begin
+                $display("Read Data: 0x%08h_08h", this.rdata[63:32], this.rdata[31:0]);
+            end else begin
+                $display("Read Data: 0x%h", this.rdata);
+            end
+            $display("Read Resp: %s", rresp.name());
+            $display("Read Index: %d", this.index);
+        endfunction
+
     endclass
 
     // AXI4-Lite write transaction
@@ -30,7 +51,7 @@ package axi4l_pkg;
         parameter   int ADDR_WIDTH  = 32,
         parameter   int DATA_WIDTH  = 32
     );
-        
+
         logic [ADDR_WIDTH-1:0] awaddr;
         logic [DATA_WIDTH-1:0] wdata;
         logic [(DATA_WIDTH/8)-1:0] wstrb;
@@ -113,31 +134,38 @@ package axi4l_pkg;
             fork
                 // Wait until the read address handshake is complete and then fire an event
                 begin
+                    // Align to this clock edge
+                    @(this.vif.cb);
+                    // Assert that we have a valid address and block until ready and valid are true
                     this.vif.araddr <= rd_txn.araddr;
                     this.vif.arvalid <= 1'b1;
+                    wait (this.vif.arvalid && this.vif.arready);
+
+                    // Align to this edge now, and drive the address to meaningless values
                     @(this.vif.cb);
-                    while (! (this.vif.arvalid && this.vif.arready) ) begin
-                        @(this.vif.cb);
-                    end
-                    // Drive the address to meaningless values
                     this.vif.araddr <= 'hX;
                     this.vif.arvalid <= 1'b0;
-                    $display("Read addr: %h", rd_txn.araddr);
                     ->araddr_done;
                 end
-                // Once the event has fired, we capture the data
                 begin
+                    // Once the event has fired, we can capture the data
                     @araddr_done;
-                    this.vif.rready <= 1'b1;
+                    // If the initiator is holding valid like they should, make sure we can actually
+                    // see it
+                    repeat (2) @(this.vif.cb);
+
+                    // Align to this clock edge
                     @(this.vif.cb);
-                    while (! (this.vif.rvalid && this.vif.rready) ) begin
-                        @(this.vif.cb);
-                    end
+                    // Assert that we are ready for data and block until valid and ready are true
+                    this.vif.rready <= 1'b1;
+                    wait (this.vif.rvalid && this.vif.rready);
+                    rd_txn.rdata <= this.vif.rdata;
+                    rd_txn.rresp <= axi4l_resp_t'(this.vif.rresp);
+
+                    @(this.vif.cb);
                     this.vif.rready <= 1'b0;
-                    $display("Read data: %h", this.vif.rdata);
-                    $display("Read resp: %d", this.vif.rresp);
                 end
-            // This requires that both of these tasks complete before rejoining the main thread
+            // Require that both of these tasks complete before rejoining the main thread
             join
             rd_txn.index = rd_count++;
             rd_txn_results.push_back(rd_txn);
