@@ -5,24 +5,25 @@ use ieee.numeric_std.all;
 
 entity axi4l_regs is
     generic (
-        -- Width of AXI address bus
-        ADDR_WIDTH          : natural       := 32;
-        -- Width of AXI and register data bus. Should be either 32-bit or 64-bit
-        DATA_WIDTH          : natural       := 32;
-        -- Number of 32 or 64-bit registers to support
-        NUM_REGS            : natural       := 16
+        --AXI bus details
+        AXI_ADDR_WIDTH          : natural       := 32;
+        AXI_DATA_WIDTH          : natural       := 32;
+        -- Number of 32 or 64-bit registers to support (will be rounded up to nearest power of 2)
+        NUM_REGS            : natural       := 16;
+        -- Access control mask. Each bit: '1' = writable, '0' = read-only
+        ACCESS_CTRL         : std_logic_vector(NUM_REGS-1 downto 0) := "1111111111111111"
     );
     port (
         clk                 : in  std_logic;
         rstn                : in  std_logic;
 
         -- AXI4-Lite slave interface
-        s_axi_awaddr        : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
+        s_axi_awaddr        : in  std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
         s_axi_awvalid       : in  std_logic;
         s_axi_awready       : out std_logic;
 
-        s_axi_wdata         : in  std_logic_vector(DATA_WIDTH-1 downto 0);
-        s_axi_wstrb         : in  std_logic_vector((DATA_WIDTH/8)-1 downto 0);
+        s_axi_wdata         : in  std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
+        s_axi_wstrb         : in  std_logic_vector((AXI_DATA_WIDTH/8)-1 downto 0);
         s_axi_wvalid        : in  std_logic;
         s_axi_wready        : out std_logic;
 
@@ -30,35 +31,48 @@ entity axi4l_regs is
         s_axi_bvalid        : out std_logic;
         s_axi_bready        : in  std_logic;
 
-        s_axi_araddr        : in  std_logic_vector(ADDR_WIDTH-1 downto 0);
+        s_axi_araddr        : in  std_logic_vector(AXI_ADDR_WIDTH-1 downto 0);
         s_axi_arvalid       : in  std_logic;
         s_axi_arready       : out std_logic;
 
-        s_axi_rdata         : out std_logic_vector(DATA_WIDTH-1 downto 0);
+        s_axi_rdata         : out std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
         s_axi_rresp         : out std_logic_vector(1 downto 0);
         s_axi_rvalid        : out std_logic;
         s_axi_rready        : in  std_logic;
 
         -- Register interface
-        reg_addr            : out std_logic_vector(integer(ceil(log2(real(NUM_REGS))))-1 downto 0);
-        reg_wdata           : out std_logic_vector(DATA_WIDTH-1 downto 0);
-        reg_wstrb           : out std_logic_vector((DATA_WIDTH/8)-1 downto 0);
+        reg_addr            : out std_logic_vector(natural(ceil(log2(real(NUM_REGS))))-1 downto 0);
+        reg_wdata           : out std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
+        reg_wstrb           : out std_logic_vector((AXI_DATA_WIDTH/8)-1 downto 0);
         reg_wren            : out std_logic;
-        reg_rdata           : in  std_logic_vector(DATA_WIDTH-1 downto 0);
-        reg_rden            : out std_logic
+        reg_rdata           : in  std_logic_vector(AXI_DATA_WIDTH-1 downto 0);
+        reg_rden            : out std_logic;
+        reg_req             : out std_logic;
+        reg_ack             : in  std_logic
     );
 
 end entity axi4l_regs;
 
 architecture behavioral of axi4l_regs is
 
+    -- Design notes:
+    --   - The AXI bridge should complete reads and writes but indicate errors in the response
+    --     when attempting to write a value that is not writeabled
+    --   - All register access is handled in this module (i.e., if register access is made on the
+    --     register interface, it is expected to complete)
+    --   - Register access is centralized in this module because it already has to be done to
+    --     conform to the AXI spec and it register access in the internal register block, which makes
+    --     implementing it something like BRAM easier later
+
     constant RESP_OKAY          : std_logic_vector(1 downto 0) := b"00";
     constant RESP_EXOKAY        : std_logic_vector(1 downto 0) := b"01";
     constant RESP_SLVERR        : std_logic_vector(1 downto 0) := b"10";
     constant RESP_DECERR        : std_logic_vector(1 downto 0) := b"11";
 
-    -- assert here about NUM_REGS relative to address
-    signal  rd_addr             : std_logic_vector(integer(ceil(log2(real(NUM_REGS))))-1 downto 0);
+    -- Calculate the width of the register bus for internal use
+    constant REG_ADDR_WIDTH     : natural(ceil(log2(real(NUM_REGS))));
+
+    signal  rd_addr             : std_logic_vector(REG_ADDR_WIDTH-1 downto 0);
     -- Busy servicing an AXI read. Only deasserted when the response and data are received by the
     -- master
     signal  rd_busy             : std_logic;
@@ -71,9 +85,9 @@ architecture behavioral of axi4l_regs is
         variable align_to : integer;
     begin
         addr_int := to_integer(unsigned(addr));
-        if (DATA_WIDTH = 32) then
+        if (AXI_DATA_WIDTH = 32) then
             align_to := 4;
-        elsif (DATA_WIDTH = 64) then
+        elsif (AXI_DATA_WIDTH = 64) then
             align_to := 8;
         else
             return false;
