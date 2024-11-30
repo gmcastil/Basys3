@@ -43,7 +43,6 @@ entity axi4l_regs is
         reg_wdata           : out std_logic_vector(REG_DATA_WIDTH-1 downto 0);
         reg_wren            : out std_logic;
         reg_rdata           : in  std_logic_vector(REG_DATA_WIDTH-1 downto 0);
-        reg_rden            : out std_logic;
         reg_req             : out std_logic;
         reg_ack             : in  std_logic
     );
@@ -72,7 +71,7 @@ architecture behavioral of axi4l_regs is
     -- ----- start package / configuration values
     -- These need to go in a package (and eventually with different configurations)
     -- Number of 32 or 64-bit registers to support
-    constant NUM_REGS           : natural       := 8;
+    constant NUM_REGS           : natural       := 4;
     -- Access control mask. Each bit: '1' = writable, '0' = read-only
     constant ACCESS_CTRL        : std_logic_vector(NUM_REGS-1 downto 0) := (others=>'1');
     -- This will need to bo into a package configuration too, since it is dependent upon the AXI
@@ -80,16 +79,22 @@ architecture behavioral of axi4l_regs is
     -- (configuration).  Here we can set it to 32 and then only use 32-bit in our testbench (we
     -- coudl get more sophisticated probably but this is good for now).
     constant BASE_ADDR          : unsigned(AXI_ADDR_WIDTH-1 downto 0) := x"80000000";
+    -- Used to isolate the offset address by masking out the upper bits corresponding to the base
+    -- address. It eliminates the need for subtraction by ensuring that only the bits relevant to
+    -- the offset remain. The masked result can then be directly used to calculate the register
+    -- index within the register block. In principle, an interconnect should prevent this sort of
+    -- thing from happening.
+    constant BASE_ADDR_MASK     : unsigned(AXI_ADDR_WIDTH-1 downto 0) := x"80000FFF";
     -- ----- end package / configuration values
 
-    -- Value read from AXI that is going to get used internally and eventually converted to an
-    -- output address
+    -- Address read from the AXI bus - used internally to convert into an index into the register
+    -- array
     signal  rd_addr             : unsigned(AXI_ADDR_WIDTH-1 downto 0);
     -- Busy servicing an AXI read. Only deasserted when the response and data are received by the
     -- master
     signal  rd_busy             : std_logic;
-    -- Done reading internal register
-    signal  reg_rd_done         : std_logic;
+    signal  rd_txn_cnt          : unsigned(31 downto 0);
+    signal  rd_err_cnt          : unsigned(31 downto 0);
 
     -- Returns true if address is aligned to 32 or 64-bit access
     function is_aligned(addr : unsigned) return boolean is
@@ -110,39 +115,39 @@ architecture behavioral of axi4l_regs is
         end if;
     end function;
 
-    -- Returns true if address is readable
-    function is_readable(addr : unsigned) return boolean is
-        variable addr_idx : natural;
+    -- Convert an AXI address offset to a register index. Note that the unsigned result is resized
+    -- to match the width of the register interface
+    function addr_to_index(addr : unsigned) return unsigned is
+        variable index : unsigned(REG_ADDR_WIDTH-1 downto 0);
     begin
         if (AXI_DATA_WIDTH = 32) then
-            addr_idx := to_integer((addr - BASE_ADDR) srl 3);
-        elsif (AXI_DATA_WIDTH = 64) then
-            addr_idx := to_integer((addr - BASE_ADDR) srl 4);
+            index := resize(addr srl 2, REG_ADDR_WIDTH);
         else
-            return false;
+            index := resize(addr srl 3, REG_ADDR_WIDTH);
         end if;
+        return index;
+    end function;
 
-        if (addr_idx <= (ACCESS_CTRL'length - 1)) then
+    -- Returns true if address offset is readable
+    function is_readable(addr : unsigned) return boolean is
+        variable index : unsigned(REG_ADDR_WIDTH-1 downto 0);
+    begin
+        index := addr_to_index(addr);
+        -- Maybe express this cleaner?
+        if (index <= (ACCESS_CTRL'length - 1)) then
             return true;
         else
             return false;
         end if;
-
     end function;
 
-    -- Returns true if address is writable
+    -- Returns true if address offset is writable
     function is_writable(addr : unsigned) return boolean is
-        variable addr_idx : natural;
+        variable index_int : natural;
     begin
-        if (AXI_DATA_WIDTH = 32) then
-            addr_idx := to_integer((addr - BASE_ADDR) srl 3);
-        elsif (AXI_DATA_WIDTH = 64) then
-            addr_idx := to_integer((addr - BASE_ADDR) srl 4);
-        else
-            return false;
-        end if;
-
-        if (ACCESS_CTRL(addr_idx) = '1') then
+        index_int := to_integer(addr_to_index(addr));
+        -- Maybe express this cleaner?
+        if (ACCESS_CTRL(index_int) = '1') then
             return true;
         else
             return false;
@@ -164,38 +169,45 @@ begin
                 s_axi_bresp         <= (others=>'0');
 
                 rd_busy             <= '0';
+                rd_txn_cnt          <= (others=>'0');
+                rd_err_cnt          <= (others=>'0');
+
+                reg_req             <= '0';
+                reg_wren            <= '0';
             else
 
+                -- Register the address from the AXI bus and mark ourselves as busy
                 if (s_axi_arvalid = '1' and s_axi_arready = '0' and rd_busy = '0') then
                     s_axi_arready       <= '1';
-                    rd_addr             <= unsigned(s_axi_araddr);
+                    -- Remove the base address and just consider bits that are available in the mask
+                    rd_addr             <= unsigned(s_axi_araddr) and BASE_ADDR_MASK;
                     rd_busy             <= '1';
                 elsif (s_axi_arvalid = '1' and s_axi_arready = '1' and rd_busy = '1') then
                     s_axi_arready       <= '0';
                 end if;
 
+                -- Have an AXI read to process
                 if (rd_busy = '1') then
                     -- Address is one that we can service
                     if (is_readable(rd_addr) and is_aligned(rd_addr)) then
                         -- Have not asserted valid to the master yet
                         if (s_axi_rvalid = '0') then
                             -- Have not read the value from the register bank yet
-                            if (reg_rd_done = '0') then
-                                reg_rden            <= '1';
-                                reg_addr            <= std_logic_vector(rd_addr);
-                                reg_rd_done         <= '1';
+                            if (reg_req = '0') then
+                                reg_req             <= '1';
+                                reg_addr            <= std_logic_vector(addr_to_index(rd_addr));
                             -- Have a value from the register bank now
-                            else
-                                reg_rden            <= '0';
-                                --s_axi_rdata         <= x"12341234"; -- reg_rdata;
-                                s_axi_rresp         <= RESP_OKAY;
+                            elsif (reg_req = '1' and reg_ack = '1') then
+                                reg_req             <= '0';
+                                s_axi_rdata         <= reg_rdata;
                                 s_axi_rvalid        <= '1';
+                                s_axi_rresp         <= RESP_OKAY;
                             end if;
                         -- Read response handshake is complete
                         elsif (s_axi_rvalid = '1' and s_axi_rready = '1') then
-                            s_axi_rdata         <= x"12341234";
                             s_axi_rvalid        <= '0';
                             rd_busy             <= '0';
+                            rd_txn_cnt          <= rd_txn_cnt + 1;
                         end if;
                     -- Not an address we can service
                     else
@@ -207,6 +219,7 @@ begin
                         elsif (s_axi_rvalid = '1' and s_axi_rready = '1') then
                             s_axi_rvalid        <= '0';
                             rd_busy             <= '0';
+                            rd_err_cnt          <= rd_err_cnt + 1;
                         end if;
                     end if;
                 end if;

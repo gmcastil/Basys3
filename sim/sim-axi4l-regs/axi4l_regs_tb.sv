@@ -58,6 +58,8 @@ module axi4l_regs_tb ();
     end
 
     // Main testbench body
+    logic [31:0] addr;
+
     initial begin
         $display("Starting simulation...");
 
@@ -66,10 +68,14 @@ module axi4l_regs_tb ();
         @(posedge axi4l_arstn);
         repeat (10) @(axi4l_if_i0.cb);
 
-        for (int addr = 0; addr < 4; addr = addr + 4) begin
-            rd_txn = new(addr);
-            m_bfm.read(rd_txn);
-            rd_txn.display();
+        for (int i = 0; i < 4; i++) begin
+            fork begin
+                addr = 32'h80000000 + (4 * i);
+                $display("Starting read at address %h", addr);
+                rd_txn = new(addr);
+                m_bfm.read(rd_txn);
+                rd_txn.display();
+            end join_none
         end
 
         $finish;
@@ -105,7 +111,21 @@ module axi4l_regs_tb ();
         .reg_wdata                      (reg_wdata),
         .reg_wren                       (reg_wren),
         .reg_rdata                      (reg_rdata),
-        .reg_rden                       (reg_rden),
+        .reg_req                        (reg_req),
+        .reg_ack                        (reg_ack)
+    );
+
+    reg_block #(
+        .REG_ADDR_WIDTH                 (REG_ADDR_WIDTH),
+        .REG_DATA_WIDTH                 (REG_DATA_WIDTH)
+    )
+    reg_block_i0 (
+        .clk                            (axi4l_aclk),
+        .rst                            (~axi4l_arstn),
+        .reg_addr                       (reg_addr),
+        .reg_wdata                      (reg_wdata),
+        .reg_wren                       (reg_wren),
+        .reg_rdata                      (reg_rdata),
         .reg_req                        (reg_req),
         .reg_ack                        (reg_ack)
     );

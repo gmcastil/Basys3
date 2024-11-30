@@ -24,7 +24,7 @@ package axi4l_pkg;
         endfunction
 
         // Display read transaction data
-        function display();
+        function void display();
             if (ADDR_WIDTH == 32) begin
                 $display("Read Addr: 0x%08h", this.araddr);
             end else if (ADDR_WIDTH == 64) begin
@@ -139,9 +139,10 @@ package axi4l_pkg;
                     // Assert that we have a valid address and block until ready and valid are true
                     this.vif.araddr <= rd_txn.araddr;
                     this.vif.arvalid <= 1'b1;
-                    wait (this.vif.arvalid && this.vif.arready);
-
                     // Align to this edge now, and drive the address to meaningless values
+                    @(this.vif.cb);
+
+                    wait (this.vif.arvalid && this.vif.arready);
                     @(this.vif.cb);
                     this.vif.araddr <= 'hX;
                     this.vif.arvalid <= 1'b0;
