@@ -50,6 +50,15 @@ architecture behavioral of skid_buffer is
 
 begin
 
+    -- Only read from the FIFO when it is ready, non-empty and we have a spot to put the
+    -- data on the next clock cycle
+    fifo_rd_en  <= '0' when (fifo_empty = '1' or fifo_ready = '0') else
+                   -- These first two signals are not strictly required, but are retained for
+                   -- clarity (first condition makes them unnecessarily redundant). Confirmed
+                   -- that synthesis result is the same without the redundant check.
+                   '1' when (fifo_empty = '0' and fifo_ready = '1' and ((rd_valid = '0') or (rd_valid = '1' and rd_ready = '1'))) else
+                   '0';
+
     process(clk)
     begin
         if rising_edge(clk) then
@@ -113,15 +122,6 @@ begin
             end if;
         end if;
     end process;
-
-    -- Only read from the FIFO when it is ready, non-empty and we have a spot to put the
-    -- data on the next clock cycle
-    fifo_rd_en  <= '0' when (fifo_empty = '1' or fifo_ready = '0') else
-                   -- These first two signals are not strictly required, but are retained for
-                   -- clarity (first condition makes them unnecessarily redundant). Confirmed
-                   -- that synthesis result is the same without the redundant check.
-                   '1' when (fifo_empty = '0' and fifo_ready = '1' and ((rd_valid = '0') or (rd_valid = '1' and rd_ready = '1'))) else
-                   '0';
 
 end architecture behavioral;
 
