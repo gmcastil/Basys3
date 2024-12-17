@@ -11,7 +11,7 @@ module axi4l_regs_tb ();
     // These require that the register details in the DUT are set as constants or brought in as an
     // external package with a configuration. For now, set these here and then later we'll deal with
     // the complexity of configuration (and especially those in a mixedsvvh environment).
-    parameter int REG_ADDR_WIDTH    = 2;
+    parameter int REG_ADDR_WIDTH    = 16;
     parameter int REG_DATA_WIDTH    = 32;
 
     logic axi4l_aclk = 0;
@@ -84,7 +84,7 @@ module axi4l_regs_tb ();
     axi4l_regs #(
         .BASE_OFFSET                    (32'h80000000),
         .BASE_OFFSET_MASK               (32'h0000FFFF),
-        .REG_ADDR_WIDTH                 (2)
+        .REG_ADDR_WIDTH                 (REG_ADDR_WIDTH)
     )
     axi4l_regs_i0 (
         .clk                            (axi4l_aclk),

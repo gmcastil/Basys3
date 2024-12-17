@@ -75,63 +75,65 @@ begin
                 reg_ack         <= '0';
                 reg_err         <= '0';
                 busy            <= '0';
+                reg_err_cnt     <= (others=>'0');
             else
                 -- Not servicing a register access
                 if (busy = '0') then
                     -- Access requested
                     if (reg_req = '1') then
                         busy        <= '1';
-                        -- Read was requested
-                        if (reg_wren = '0') then
-                            -- Service the register read
-                            if (reg_req = '1' and reg_ack = '0') then
-                                reg_ack         <= '1';
-                                if is_readable(reg_addr) then
-                                    reg_rdata       <= reg_bank(to_integer(reg_addr));
-                                    reg_err         <= '0';
-                                else
-                                    reg_rdata       <= (others=>'1');
-                                    reg_err         <= '1';
+                    end if;
+                else
+                    -- Read was requested
+                    if (reg_wren = '0') then
+                        -- Service the register read
+                        if (reg_req = '1' and reg_ack = '0') then
+                            reg_ack         <= '1';
+                            if is_readable(reg_addr) then
+                                reg_rdata       <= reg_bank(to_integer(reg_addr));
+                                reg_err         <= '0';
+                            else
+                                reg_rdata       <= (others=>'1');
+                                reg_err         <= '1';
+                            end if;
+                        -- Terminate the register read
+                        elsif (reg_req = '1' and reg_ack = '1') then
+                            reg_ack         <= '0';
+                            busy            <= '0';
+                            if (reg_err = '1') then
+                                reg_err_cnt     <= reg_err_cnt + 1;
+                            end if;
+                            reg_err         <= '0';
+                        end if;
+                    -- Write requested
+                    else
+                        if (reg_req = '1' and reg_ack = '0') then
+                            reg_ack         <= '1';
+                            if is_writable(reg_addr) then
+                                -- Applying byte enables
+                                if (reg_be(0) = '1') then
+                                    reg_bank(to_integer(reg_addr))(7 downto 0) <= reg_wdata(7 downto 0);
                                 end if;
-                            -- Terminate the register read
-                            elsif (reg_req = '1' and reg_ack = '1') then
-                                reg_ack         <= '0';
-                                busy            <= '0';
-                                if (reg_err = '1') then
-                                    reg_err_cnt     <= reg_err_cnt + 1;
+                                if (reg_be(1) = '1') then
+                                    reg_bank(to_integer(reg_addr))(15 downto 8) <= reg_wdata(15 downto 8);
+                                end if;
+                                if (reg_be(2) = '1') then
+                                    reg_bank(to_integer(reg_addr))(23 downto 16) <= reg_wdata(23 downto 16);
+                                end if;
+                                if (reg_be(3) = '1') then
+                                    reg_bank(to_integer(reg_addr))(31 downto 24) <= reg_wdata(31 downto 24);
                                 end if;
                                 reg_err         <= '0';
+                            else
+                                reg_err         <= '1';
                             end if;
-                        -- Write requested
-                        else
-                            if (reg_req = '1' and reg_ack = '0') then
-                                reg_ack         <= '1';
-                                if is_writable(reg_addr) then
-                                    -- Applying byte enables
-                                    if (reg_be(0) = '1') then
-                                        reg_bank(to_integer(reg_addr))(7 downto 0) <= reg_wdata(7 downto 0);
-                                    end if;
-                                    if (reg_be(1) = '1') then
-                                        reg_bank(to_integer(reg_addr))(15 downto 8) <= reg_wdata(15 downto 8);
-                                    end if;
-                                    if (reg_be(2) = '1') then
-                                        reg_bank(to_integer(reg_addr))(23 downto 16) <= reg_wdata(23 downto 16);
-                                    end if;
-                                    if (reg_be(3) = '1') then
-                                        reg_bank(to_integer(reg_addr))(31 downto 24) <= reg_wdata(31 downto 24);
-                                    end if;
-                                    reg_err         <= '0';
-                                else
-                                    reg_err         <= '1';
-                                end if;
-                            elsif (reg_req = '1' and reg_ack = '1') then
-                                reg_ack         <= '0';
-                                busy            <= '0';
-                                if (reg_err = '1') then
-                                    reg_err_cnt     <= reg_err_cnt + 1;
-                                end if;
-                                reg_err         <= '0';
+                        elsif (reg_req = '1' and reg_ack = '1') then
+                            reg_ack         <= '0';
+                            busy            <= '0';
+                            if (reg_err = '1') then
+                                reg_err_cnt     <= reg_err_cnt + 1;
                             end if;
+                            reg_err         <= '0';
                         end if;
                     end if;
                 end if;
