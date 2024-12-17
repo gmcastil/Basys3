@@ -8,60 +8,53 @@ package axi4l_pkg;
         RESP_DECERR     = 2'b11     // Decode error
     } axi4l_resp_t;
 
-    // AXI4-Lite read transaction
-    class axi4l_rd_txn #(
+    typedef enum {
+        AXI4L_READ,
+        AXI4L_WRITE
+    } txn_type_t;
+
+    class axi4l_txn #(
         parameter   int ADDR_WIDTH  = 32,
         parameter   int DATA_WIDTH  = 32
     );
 
-        logic [ADDR_WIDTH-1:0] araddr;
-        logic [DATA_WIDTH-1:0] rdata;
-        axi4l_resp_t rresp;
+        logic [ADDR_WIDTH-1:0] addr;
+        logic [DATA_WIDTH-1:0] data;
+        axi4l_resp_t resp;
+        txn_type_t kind;
         int index;
 
-        function new(logic [ADDR_WIDTH-1:0] araddr);
-            this.araddr = araddr;
-        endfunction
-
-        // Display read transaction data
-        function void display();
-            if (ADDR_WIDTH == 32) begin
-                $display("Read Addr: 0x%08h", this.araddr);
-            end else if (ADDR_WIDTH == 64) begin
-                $display("Read Addr: 0x%08h_%08h", this.araddr[63:32], this.araddr[31:0]);
-            end else begin
-                $display("Read Addr: 0x%h", this.araddr);
+        function new(logic [ADDR_WIDTH-1:0] addr, txn_type_t kind);
+            this.addr = addr;
+            this.kind = kind;
+            if (this.kind == AXI4L_WRITE) begin
+                this.data = data;
             end
-
-            if (DATA_WIDTH == 32) begin
-                $display("Read Data: 0x%08h", this.rdata);
-            end else if (DATA_WIDTH == 64) begin
-                $display("Read Data: 0x%08h_08h", this.rdata[63:32], this.rdata[31:0]);
-            end else begin
-                $display("Read Data: 0x%h", this.rdata);
-            end
-            $display("Read Resp: %s", rresp.name());
-            $display("Read Index: %d", this.index);
         endfunction
 
-    endclass
+       function void display();
 
-    // AXI4-Lite write transaction
-    class axi4l_wr_txn #(
-        parameter   int ADDR_WIDTH  = 32,
-        parameter   int DATA_WIDTH  = 32
-    );
+           if (this.kind == AXI4L_READ) begin
+               if (ADDR_WIDTH == 32) begin
+                   $display("Read Addr: 0x%08h", this.addr);
+               end else if (ADDR_WIDTH == 64) begin
+                   $display("Read Addr: 0x%08h_%08h", this.addr[63:32], this.addr[31:0]);
+               end else begin
+                   $display("Read Addr: 0x%h", this.addr);
+               end
 
-        logic [ADDR_WIDTH-1:0] awaddr;
-        logic [DATA_WIDTH-1:0] wdata;
-        logic [(DATA_WIDTH/8)-1:0] wstrb;
-        axi4l_resp_t wr_resp;
+               if (DATA_WIDTH == 32) begin
+                   $display("Read Data: 0x%08h", this.data);
+               end else if (DATA_WIDTH == 64) begin
+                   $display("Read Data: 0x%08h_08h", this.data[63:32], this.data[31:0]);
+               end else begin
+                   $display("Read Data: 0x%h", this.data);
+               end
+               $display("Read Resp: %s", resp.name());
+               $display("Read Index: %d", this.index);
 
-        function new(logic [ADDR_WIDTH-1:0] awaddr, logic [DATA_WIDTH-1:0] wdata, logic [(DATA_WIDTH/8)-1:0] wstrb);
-            this.awaddr = awaddr;
-            this.wdata = wdata;
-            this.wstrb = wstrb;
-        endfunction
+           end
+       endfunction
 
     endclass
 
@@ -77,8 +70,7 @@ package axi4l_pkg;
         semaphore sem_wr;
         semaphore sem_rd;
 
-        axi4l_rd_txn #(ADDR_WIDTH, DATA_WIDTH) rd_txn_results[$];
-        axi4l_wr_txn #(ADDR_WIDTH, DATA_WIDTH) wr_txn_results[$];
+        axi4l_txn #(ADDR_WIDTH, DATA_WIDTH) txn_history[$];
 
         // Master BFM constructor
         function new(virtual axi4l_if vif);
@@ -97,25 +89,25 @@ package axi4l_pkg;
         endfunction
 
         // Perform an AXI4-Lite write transaction
-        task write(axi4l_wr_txn wr_txn);
+        /* task write(axi4l_txn wr_txn); */
 
-            if (this.vif.arstn == 1'b0) begin
-                $display("Write ignored while in reset");
-                return;
-            end
+        /*     if (this.vif.arstn == 1'b0) begin */
+        /*         $display("Write ignored while in reset"); */
+        /*         return; */
+        /*     end */
 
-            sem_wr.get();
-            this.vif.awvalid = 1'b1;
-            this.vif.awaddr = wr_txn.awaddr;
-            this.vif.wvalid = 1'b1;
-            this.vif.wdata = wr_txn.wdata;
-            this.vif.wstrb = wr_txn.wstrb;
+        /*     sem_wr.get(); */
+        /*     this.vif.awvalid = 1'b1; */
+        /*     this.vif.awaddr = wr_txn.awaddr; */
+        /*     this.vif.wvalid = 1'b1; */
+        /*     this.vif.wdata = wr_txn.wdata; */
+        /*     this.vif.wstrb = wr_txn.wstrb; */
 
-            sem_wr.put();
-        endtask
+        /*     sem_wr.put(); */
+        /* endtask */
 
         // Perform and AXI4-Lite read transaction
-        task read(axi4l_rd_txn rd_txn);
+        task read(axi4l_txn rd_txn);
 
             // Total number of read transactions (used as index for read transaction results)
             static int rd_count = 0;
@@ -137,7 +129,7 @@ package axi4l_pkg;
                     // Align to this clock edge
                     @(this.vif.cb);
                     // Assert that we have a valid address and block until ready and valid are true
-                    this.vif.araddr <= rd_txn.araddr;
+                    this.vif.araddr <= rd_txn.addr;
                     this.vif.arvalid <= 1'b1;
                     // Align to this edge now, and drive the address to meaningless values
                     @(this.vif.cb);
@@ -152,7 +144,8 @@ package axi4l_pkg;
                     // Once the event has fired, we can capture the data
                     @araddr_done;
                     // If the initiator is holding valid like they should, make sure we can actually
-                    // see it
+                    // see it (TODO this might not be necessary and in reality, I might want to
+                    // truncate these so that I can send faster requests)
                     repeat (2) @(this.vif.cb);
 
                     // Align to this clock edge
@@ -160,8 +153,8 @@ package axi4l_pkg;
                     // Assert that we are ready for data and block until valid and ready are true
                     this.vif.rready <= 1'b1;
                     wait (this.vif.rvalid && this.vif.rready);
-                    rd_txn.rdata <= this.vif.rdata;
-                    rd_txn.rresp <= axi4l_resp_t'(this.vif.rresp);
+                    rd_txn.data <= this.vif.rdata;
+                    rd_txn.resp <= axi4l_resp_t'(this.vif.rresp);
 
                     @(this.vif.cb);
                     this.vif.rready <= 1'b0;
@@ -169,7 +162,7 @@ package axi4l_pkg;
             // Require that both of these tasks complete before rejoining the main thread
             join
             rd_txn.index = rd_count++;
-            rd_txn_results.push_back(rd_txn);
+            this.txn_history.push_back(rd_txn);
 
             sem_rd.put();
         endtask
@@ -194,5 +187,4 @@ package axi4l_pkg;
         endtask
 
     endclass
-
 endpackage

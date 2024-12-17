@@ -2,7 +2,7 @@
 set StdArithNoWarnings 1
 set NumericStdNoWarnings 1
 
-vsim -c \
+vsim \
     -classdebug \
     -voptargs=+acc \
     "work.axi4l_regs_tb"

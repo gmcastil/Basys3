@@ -11,26 +11,28 @@ module axi4l_regs_tb ();
     // These require that the register details in the DUT are set as constants or brought in as an
     // external package with a configuration. For now, set these here and then later we'll deal with
     // the complexity of configuration (and especially those in a mixedsvvh environment).
-    parameter int REG_ADDR_WIDTH    = 4;
+    parameter int REG_ADDR_WIDTH    = 2;
     parameter int REG_DATA_WIDTH    = 32;
 
     logic axi4l_aclk = 0;
     logic axi4l_arstn = 1;
 
     // Register Interface Signals
-    logic [3:0]                     reg_addr;
+    logic [REG_ADDR_WIDTH-1:0]      reg_addr;
     logic [REG_DATA_WIDTH-1:0]      reg_wdata;
     logic                           reg_wren;
+    logic [(REG_DATA_WIDTH/8)-1:0]  reg_be;
     logic [REG_DATA_WIDTH-1:0]      reg_rdata;
     logic                           reg_rden;
     logic                           reg_req;
     logic                           reg_ack;
+    logic                           reg_err;
 
     // AXI4-Lite master BFM
     axi4l_pkg::m_axi4l_bfm m_bfm;
 
-    axi4l_pkg::axi4l_wr_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) wr_txn;
-    axi4l_pkg::axi4l_rd_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) rd_txn;
+//    axi4l_pkg::axi4l_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) wr_txn;
+    axi4l_pkg::axi4l_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) rd_txn;
 
     // AXI4-Lite interface needs to be instantiated before it can be referenced in simulation code
     axi4l_if #(
@@ -68,24 +70,21 @@ module axi4l_regs_tb ();
         @(posedge axi4l_arstn);
         repeat (10) @(axi4l_if_i0.cb);
 
-        for (int i = 0; i < 4; i++) begin
-            fork begin
-                addr = 32'h80000000 + (4 * i);
-                $display("Starting read at address %h", addr);
-                rd_txn = new(addr);
-                m_bfm.read(rd_txn);
-                rd_txn.display();
-            end join_none
+        for (int i = 0; i < 5; i++) begin
+            addr = 32'h80000000 + (4 * i);
+            $display("Starting read at address %h", addr);
+            rd_txn = new(addr, AXI4L_READ);
+            m_bfm.read(rd_txn);
+            rd_txn.display();
         end
 
         $finish;
     end
 
     axi4l_regs #(
-        .AXI_ADDR_WIDTH                 (AXI_ADDR_WIDTH),
-        .AXI_DATA_WIDTH                 (AXI_DATA_WIDTH),
-        .REG_ADDR_WIDTH                 (REG_ADDR_WIDTH),
-        .REG_DATA_WIDTH                 (REG_DATA_WIDTH)
+        .BASE_OFFSET                    (32'h80000000),
+        .BASE_OFFSET_MASK               (32'h0000FFFF),
+        .REG_ADDR_WIDTH                 (2)
     )
     axi4l_regs_i0 (
         .clk                            (axi4l_aclk),
@@ -110,14 +109,18 @@ module axi4l_regs_tb ();
         .reg_addr                       (reg_addr),
         .reg_wdata                      (reg_wdata),
         .reg_wren                       (reg_wren),
+        .reg_be                         (reg_be),
         .reg_rdata                      (reg_rdata),
         .reg_req                        (reg_req),
-        .reg_ack                        (reg_ack)
+        .reg_ack                        (reg_ack),
+        .reg_err                        (reg_err)
     );
 
     reg_block #(
         .REG_ADDR_WIDTH                 (REG_ADDR_WIDTH),
-        .REG_DATA_WIDTH                 (REG_DATA_WIDTH)
+        .NUM_REGS                       (4),
+        .REG_READ_MASK                  (4'b1111),
+        .REG_WRITE_MASK                 (4'b1101)
     )
     reg_block_i0 (
         .clk                            (axi4l_aclk),
@@ -125,9 +128,11 @@ module axi4l_regs_tb ();
         .reg_addr                       (reg_addr),
         .reg_wdata                      (reg_wdata),
         .reg_wren                       (reg_wren),
+        .reg_be                         (reg_be),
         .reg_rdata                      (reg_rdata),
         .reg_req                        (reg_req),
-        .reg_ack                        (reg_ack)
+        .reg_ack                        (reg_ack),
+        .reg_err                        (reg_err)
     );
 
 endmodule
