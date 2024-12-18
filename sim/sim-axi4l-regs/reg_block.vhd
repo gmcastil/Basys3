@@ -19,7 +19,6 @@ entity reg_block is
     generic (
         REG_ADDR_WIDTH      : natural       := 4;
         NUM_REGS            : natural       := 16;
-        REG_READ_MASK       : std_logic_vector(NUM_REGS-1 downto 0) := (others=>'1');
         REG_WRITE_MASK      : std_logic_vector(NUM_REGS-1 downto 0) := (others=>'1')
     );
     port (
@@ -50,7 +49,7 @@ architecture behavioral of reg_block is
 
     function is_readable(addr : unsigned) return boolean is
     begin
-        if (to_integer(addr) < NUM_REGS and REG_READ_MASK(to_integer(addr)) = '1') then
+        if (to_integer(addr) < NUM_REGS) then
             return true;
         else
             return false;
@@ -68,14 +67,27 @@ architecture behavioral of reg_block is
 
 begin
 
-    process(clk)
+    assign_write_regs: process(clk) is
+    begin
+        if rising_edge(clk) then
+            -- No need to reset these, the reset to the register bank will propagate to them after
+            -- reset is deasserted
+            wr_regs         <= reg_bank;
+        end if;
+    end process assign_write_regs;
+
+    process(clk) is
     begin
         if rising_edge(clk) then
             if (rst = '1') then
+                busy            <= '0';
+
                 reg_ack         <= '0';
                 reg_err         <= '0';
-                busy            <= '0';
                 reg_err_cnt     <= (others=>'0');
+
+                -- Cast this to prevent an ambiguous expression type
+                reg_bank        <= (others=>reg_t'(others=>'0'));
             else
                 -- Not servicing a register access
                 if (busy = '0') then

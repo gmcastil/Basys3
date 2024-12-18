@@ -14,6 +14,9 @@ module axi4l_regs_tb ();
     parameter int REG_ADDR_WIDTH    = 16;
     parameter int REG_DATA_WIDTH    = 32;
 
+    parameter int NUM_REGS                          = 4;
+    parameter logic [NUM_REGS-1:0] REG_WRITE_MASK   = 4'b1110;
+
     logic axi4l_aclk = 0;
     logic axi4l_arstn = 1;
 
@@ -27,6 +30,9 @@ module axi4l_regs_tb ();
     logic                           reg_req;
     logic                           reg_ack;
     logic                           reg_err;
+
+    logic [NUM_REGS-1:0][REG_DATA_WIDTH-1:0]    rd_regs;
+    logic [NUM_REGS-1:0][REG_DATA_WIDTH-1:0]    wr_regs;
 
     // AXI4-Lite master BFM
     axi4l_pkg::m_axi4l_bfm m_bfm;
@@ -118,9 +124,8 @@ module axi4l_regs_tb ();
 
     reg_block #(
         .REG_ADDR_WIDTH                 (REG_ADDR_WIDTH),
-        .NUM_REGS                       (4),
-        .REG_READ_MASK                  (4'b1111),
-        .REG_WRITE_MASK                 (4'b1101)
+        .NUM_REGS                       (NUM_REGS),
+        .REG_WRITE_MASK                 (REG_WRITE_MASK)
     )
     reg_block_i0 (
         .clk                            (axi4l_aclk),
@@ -132,7 +137,9 @@ module axi4l_regs_tb ();
         .reg_rdata                      (reg_rdata),
         .reg_req                        (reg_req),
         .reg_ack                        (reg_ack),
-        .reg_err                        (reg_err)
+        .reg_err                        (reg_err),
+        .rd_regs                        (rd_regs),
+        .wr_regs                        (wr_regs)
     );
 
 endmodule
