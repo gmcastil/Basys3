@@ -79,7 +79,11 @@ architecture behavioral of axi4l_regs is
     constant RESP_DECERR        : std_logic_vector(1 downto 0) := b"11";
 
     signal  rd_addr             : unsigned(31 downto 0);
+    signal  wr_addr             : unsigned(31 downto 0);
     signal  rd_busy             : std_logic;
+    signal  wr_busy             : std_logic;
+    signal  wr_txn_cnt          : unsigned(31 downto 0);
+    signal  wr_err_cnt          : unsigned(31 downto 0);
     signal  rd_txn_cnt          : unsigned(31 downto 0);
     signal  rd_err_cnt          : unsigned(31 downto 0);
 
@@ -115,6 +119,10 @@ begin
                 rd_txn_cnt          <= (others=>'0');
                 rd_err_cnt          <= (others=>'0');
 
+                wr_busy             <= '0';
+                wr_txn_cnt          <= (others=>'0');
+                wr_err_cnt          <= (others=>'0');
+                
                 reg_req             <= '0';
                 reg_wren            <= '0';
             else
@@ -126,7 +134,7 @@ begin
                     -- service the address on the wire first
                     rd_addr             <= unsigned(s_axi_araddr);
                     rd_busy             <= '1';
-                elsif (s_axi_arvalid = '1' and s_axi_arready = '1' and rd_busy = '1') then
+                else
                     s_axi_arready       <= '0';
                 end if;
 
@@ -134,27 +142,30 @@ begin
                 if (rd_busy = '1') then
                     -- AXI address is aligned and within the range servicable by the slave
                     if can_service(rd_addr) then
-                        -- Have not asserted valid to the master yet
+                        -- Have not asserted valid data to the master yet
                         if (s_axi_rvalid = '0') then
                             -- Have not requested a read from the register bank yet
                             if (reg_req = '0') then
                                 reg_req             <= '1';
                                 reg_addr            <= resize((rd_addr and BASE_OFFSET_MASK) srl 2, REG_ADDR_WIDTH);
                             -- Register bank responded
-                            elsif (reg_req = '1' and reg_ack = '1' and reg_err = '0') then
-                                reg_req             <= '0';
-                                s_axi_rdata         <= reg_rdata;
-                                s_axi_rvalid        <= '1';
-                                s_axi_rresp         <= RESP_OKAY;
-                            elsif (reg_req = '1' and reg_ack = '1' and reg_err = '1') then
+                            elsif (reg_req = '1' and reg_ack = '1') then
                                 reg_req             <= '0';
                                 s_axi_rvalid        <= '1';
-                                s_axi_rresp         <= RESP_SLVERR;
+                                if (reg_err = '1') then
+                                    rd_err_cnt          <= rd_err_cnt + 1;
+                                    s_axi_rresp         <= RESP_SLVERR;
+                                else
+                                    s_axi_rdata         <= reg_rdata;
+                                    s_axi_rresp         <= RESP_OKAY;
+                                end if;
                             end if;
                         -- AXI read response handshake is complete
                         elsif (s_axi_rvalid = '1' and s_axi_rready = '1') then
                             s_axi_rvalid        <= '0';
                             rd_busy             <= '0';
+                            -- TODO Maybe count transactions at a higher level outside the machine
+                            -- that is handling the AXI logic (both read and write)
                             rd_txn_cnt          <= rd_txn_cnt + 1;
                         end if;
                     -- Not an AXI address we can service
@@ -172,6 +183,57 @@ begin
                     end if;
                 end if;
 
+                -- Register the data and address from the bus and mark outselves as busy
+                if (s_axi_awvalid = '1' and s_axi_awready = '0' 
+                        and s_axi_wvalid = '1' and s_axi_wready = '0' and wr_busy = '0') then
+                    s_axi_awready       <= '1';
+                    s_axi_wready        <= '1';
+                    wr_addr             <= unsigned(s_axi_awaddr);
+                    reg_wdata           <= s_axi_wdata;
+                    wr_busy             <= '1';
+                else
+                    s_axi_awready       <= '0';
+                    s_axi_wready        <= '0';
+                end if;
+
+                -- Have an AXI write transaction to process
+                if (wr_busy = '1') then
+                    -- AXI address is aligned and within the range serviceable by the slave
+                    if can_service(wr_addr) then
+                        -- Have not asserted valid response to the master yet
+                        if (s_axi_bvalid = '0') then
+                            -- Have not requested a write to the register bank yet
+                            if (reg_req = '0') then
+                                reg_req         <= '1';
+                                reg_addr        <= resize((wr_addr and BASE_OFFSET_MASK) srl 2, REG_ADDR_WIDTH);
+                            -- Register bank responded
+                            elsif (reg_req = '1' and reg_ack = '1') then
+                                reg_req         <= '0';
+                                s_axi_bvalid    <= '1';
+                                if (reg_err = '1') then
+                                    wr_err_cnt      <= wr_err_cnt + 1;
+                                    s_axi_bresp     <= RESP_SLVERR;
+                                else
+                                    s_axi_bresp     <= RESP_OKAY;
+                                end if;
+                            end if;
+                        -- AXI write response is complete
+                        elsif (s_axi_bvalid = '1' and s_axi_bready = '1') then
+                            s_axi_bvalid    <= '0';
+                            wr_busy         <= '0';
+                        end if;
+                    -- Not an AXI address we can service
+                    else
+                        if (s_axi_bvalid = '0') then
+                            s_axi_bvalid        <= '1';
+                            s_axi_bresp         <= RESP_DECERR;
+                        elsif (s_axi_bvalid = '1' and s_axi_bready = '1') then
+                            s_axi_bvalid        <= '0';
+                            wr_busy             <= '0';
+                            wr_err_cnt          <= wr_err_cnt + 1;
+                        end if;
+                    end if;
+                end if;
             end if;
         end if;
     end process;
