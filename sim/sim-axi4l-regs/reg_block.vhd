@@ -19,7 +19,8 @@ entity reg_block is
     generic (
         REG_ADDR_WIDTH      : natural       := 4;
         NUM_REGS            : natural       := 16;
-        REG_WRITE_MASK      : std_logic_vector(NUM_REGS-1 downto 0) := (others=>'1')
+        -- Identifies which registers can be written to from the bus
+        REG_WRITE_MASK      : std_logic_vector(NUM_REGS-1 downto 0) := (others=>'0')
     );
     port (
         clk                 : in  std_logic;
@@ -47,34 +48,7 @@ architecture behavioral of reg_block is
     signal busy             : std_logic;
     signal reg_err_cnt      : unsigned(31 downto 0);
 
-    function is_readable(addr : unsigned) return boolean is
-    begin
-        if (to_integer(addr) < NUM_REGS) then
-            return true;
-        else
-            return false;
-        end if;
-    end function;
-
-    function is_writable(addr : unsigned) return boolean is
-    begin
-        if (to_integer(addr) < NUM_REGS and REG_WRITE_MASK(to_integer(addr)) = '1') then
-            return true;
-        else
-            return false;
-        end if;
-    end function;
-
 begin
-
-    assign_write_regs: process(clk) is
-    begin
-        if rising_edge(clk) then
-            -- No need to reset these, the reset to the register bank will propagate to them after
-            -- reset is deasserted
-            wr_regs         <= reg_bank;
-        end if;
-    end process assign_write_regs;
 
     process(clk) is
     begin
@@ -86,9 +60,18 @@ begin
                 reg_err         <= '0';
                 reg_err_cnt     <= (others=>'0');
 
-                -- Cast this to prevent an ambiguous expression type
                 reg_bank        <= (others=>reg_t'(others=>'0'));
             else
+                -- Update all read-only registers from external sources and register output
+                -- signals again for timing purposes
+                for i in 0 to (NUM_REGS-1) loop
+                    if (REG_WRITE_MASK(i) = '0') then
+                        reg_bank(i)     <= rd_regs(i);
+                    else
+                        wr_regs(i)      <= reg_bank(i);
+                    end if;
+                end loop;
+
                 -- Not servicing a register access
                 if (busy = '0') then
                     -- Access requested
@@ -101,7 +84,10 @@ begin
                         -- Service the register read
                         if (reg_req = '1' and reg_ack = '0') then
                             reg_ack         <= '1';
-                            if is_readable(reg_addr) then
+                            -- The range of available addresses is typically greater than the number
+                            -- of registers we actually support (e.g., a 6-bit address bus, but
+                            -- only 15 registers).
+                            if (reg_addr < NUM_REGS) then
                                 reg_rdata       <= reg_bank(to_integer(reg_addr));
                                 reg_err         <= '0';
                             else
@@ -121,7 +107,8 @@ begin
                     else
                         if (reg_req = '1' and reg_ack = '0') then
                             reg_ack         <= '1';
-                            if is_writable(reg_addr) then
+                            -- Update writable registers from the interface here
+                            if (reg_addr < NUM_REGS and REG_WRITE_MASK(to_integer(reg_addr)) = '1') then
                                 -- Applying byte enables
                                 if (reg_be(0) = '1') then
                                     reg_bank(to_integer(reg_addr))(7 downto 0) <= reg_wdata(7 downto 0);
