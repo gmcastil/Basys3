@@ -116,12 +116,7 @@ begin
                 s_axi_bresp         <= (others=>'0');
 
                 rd_busy             <= '0';
-                rd_txn_cnt          <= (others=>'0');
-                rd_err_cnt          <= (others=>'0');
-
                 wr_busy             <= '0';
-                wr_txn_cnt          <= (others=>'0');
-                wr_err_cnt          <= (others=>'0');
                 
                 reg_req             <= '0';
                 reg_wren            <= '0';
@@ -153,7 +148,6 @@ begin
                                 reg_req             <= '0';
                                 s_axi_rvalid        <= '1';
                                 if (reg_err = '1') then
-                                    rd_err_cnt          <= rd_err_cnt + 1;
                                     s_axi_rresp         <= RESP_SLVERR;
                                 else
                                     s_axi_rdata         <= reg_rdata;
@@ -164,9 +158,6 @@ begin
                         elsif (s_axi_rvalid = '1' and s_axi_rready = '1') then
                             s_axi_rvalid        <= '0';
                             rd_busy             <= '0';
-                            -- TODO Maybe count transactions at a higher level outside the machine
-                            -- that is handling the AXI logic (both read and write)
-                            rd_txn_cnt          <= rd_txn_cnt + 1;
                         end if;
                     -- Not an AXI address we can service
                     else
@@ -178,7 +169,6 @@ begin
                         elsif (s_axi_rvalid = '1' and s_axi_rready = '1') then
                             s_axi_rvalid        <= '0';
                             rd_busy             <= '0';
-                            rd_err_cnt          <= rd_err_cnt + 1;
                         end if;
                     end if;
                 end if;
@@ -211,7 +201,6 @@ begin
                                 reg_req         <= '0';
                                 s_axi_bvalid    <= '1';
                                 if (reg_err = '1') then
-                                    wr_err_cnt      <= wr_err_cnt + 1;
                                     s_axi_bresp     <= RESP_SLVERR;
                                 else
                                     s_axi_bresp     <= RESP_OKAY;
@@ -230,13 +219,44 @@ begin
                         elsif (s_axi_bvalid = '1' and s_axi_bready = '1') then
                             s_axi_bvalid        <= '0';
                             wr_busy             <= '0';
-                            wr_err_cnt          <= wr_err_cnt + 1;
                         end if;
                     end if;
                 end if;
             end if;
         end if;
     end process;
+
+    txn_cnts: process(clk)
+    begin
+        if rising_edge(clk) then
+            if (rstn = '0') then
+                rd_txn_cnt          <= (others=>'0');
+                rd_err_cnt          <= (others=>'0');
+                wr_txn_cnt          <= (others=>'0');
+                wr_err_cnt          <= (others=>'0');
+            else
+
+                -- Count good and bad read transactions
+                if (s_axi_rvalid = '1' and s_axi_rready = '1') then
+                    if (s_axi_rresp = RESP_OKAY) then
+                        rd_txn_cnt          <= rd_txn_cnt + 1;
+                    else
+                        rd_err_cnt          <= rd_err_cnt + 1;
+                    end if;
+                end if;
+
+                -- Count good and bad write transactions
+                if (s_axi_bvalid = '1' and s_axi_bready = '1') then
+                    if (s_axi_bresp = RESP_OKAY) then
+                        wr_txn_cnt          <= wr_txn_cnt + 1;
+                    else
+                        wr_err_cnt          <= wr_err_cnt + 1;
+                    end if;
+                end if;
+
+            end if;
+        end if;
+    end process txn_cnts;
 
 end architecture behavioral;
 
