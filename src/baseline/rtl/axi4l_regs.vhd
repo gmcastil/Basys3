@@ -113,6 +113,8 @@ begin
 
                 s_axi_awready       <= '0';
                 s_axi_wready        <= '0';
+
+                s_axi_bvalid        <= '0';
                 s_axi_bresp         <= (others=>'0');
 
                 rd_busy             <= '0';
@@ -124,11 +126,14 @@ begin
 
                 -- Register the address from the AXI bus and mark ourselves as busy
                 if (s_axi_arvalid = '1' and s_axi_arready = '0' and rd_busy = '0') then
-                    s_axi_arready       <= '1';
-                    -- Do not apply the base offset mask yet because we need to determine if we can
-                    -- service the address on the wire first
-                    rd_addr             <= unsigned(s_axi_araddr);
-                    rd_busy             <= '1';
+                    -- If a write is not incoming, then we can start a read
+                    if (s_axi_awvalid = '0' or s_axi_wvalid = '0') then
+                        s_axi_arready       <= '1';
+                        -- Do not apply the base offset mask yet because we need to determine if we can
+                        -- service the address on the wire first
+                        rd_addr             <= unsigned(s_axi_araddr);
+                        rd_busy             <= '1';
+                    end if;
                 else
                     s_axi_arready       <= '0';
                 end if;
@@ -180,6 +185,7 @@ begin
                     s_axi_wready        <= '1';
                     wr_addr             <= unsigned(s_axi_awaddr);
                     reg_wdata           <= s_axi_wdata;
+                    reg_be              <= s_axi_wstrb;
                     wr_busy             <= '1';
                 else
                     s_axi_awready       <= '0';
@@ -195,10 +201,12 @@ begin
                             -- Have not requested a write to the register bank yet
                             if (reg_req = '0') then
                                 reg_req         <= '1';
+                                reg_wren        <= '1';
                                 reg_addr        <= resize((wr_addr and BASE_OFFSET_MASK) srl 2, REG_ADDR_WIDTH);
                             -- Register bank responded
                             elsif (reg_req = '1' and reg_ack = '1') then
                                 reg_req         <= '0';
+                                reg_wren        <= '0';
                                 s_axi_bvalid    <= '1';
                                 if (reg_err = '1') then
                                     s_axi_bresp     <= RESP_SLVERR;
