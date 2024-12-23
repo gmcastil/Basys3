@@ -15,7 +15,7 @@ module axi4l_regs_tb ();
     parameter int REG_DATA_WIDTH    = 32;
 
     parameter int NUM_REGS                          = 4;
-    parameter logic [NUM_REGS-1:0] REG_WRITE_MASK   = 4'b1110;
+    parameter logic [NUM_REGS-1:0] REG_WRITE_MASK   = 4'b1011;
 
     logic axi4l_aclk = 0;
     logic axi4l_arstn = 1;
@@ -34,10 +34,14 @@ module axi4l_regs_tb ();
     logic [NUM_REGS-1:0][REG_DATA_WIDTH-1:0]    rd_regs;
     logic [NUM_REGS-1:0][REG_DATA_WIDTH-1:0]    wr_regs;
 
+    // Registers that will be read back external sources. With the write mask we selected,
+    // register 2 would be a readable hardware register
+    assign rd_regs[2] = 32'h0000FFFF;
+
     // AXI4-Lite master BFM
     axi4l_pkg::m_axi4l_bfm m_bfm;
 
-//    axi4l_pkg::axi4l_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) wr_txn;
+    axi4l_pkg::axi4l_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) wr_txn;
     axi4l_pkg::axi4l_txn #(AXI_ADDR_WIDTH, AXI_DATA_WIDTH) rd_txn;
 
     // AXI4-Lite interface needs to be instantiated before it can be referenced in simulation code
@@ -71,7 +75,7 @@ module axi4l_regs_tb ();
     initial begin
         $display("Starting simulation...");
 
-        m_bfm = new(axi4l_if_i0);
+        m_bfm = new(axi4l_if_i0.master);
 
         @(posedge axi4l_arstn);
         repeat (10) @(axi4l_if_i0.cb);
@@ -82,6 +86,22 @@ module axi4l_regs_tb ();
             rd_txn = new(addr, AXI4L_READ);
             m_bfm.read(rd_txn);
             rd_txn.display();
+        end
+        $fflush();
+
+        for (int i = 0; i < 5; i++) begin
+            addr = 32'h80000000 + (4 * i);
+            $display("Starting writes at address %h", addr);
+            wr_txn = new(addr, AXI4L_WRITE);
+            m_bfm.write(wr_txn);
+            wr_txn.display();
+        end
+
+        for (int i = 0; i < 4; i++) begin
+            addr = 32'h80000000 + (4 * i);
+            rd_txn = new(addr, AXI4L_READ);
+            m_bfm.read(rd_txn);
+            $display("Addr: 0x%08h Data: 0x%08h", rd_txn.addr, rd_txn.data);
         end
 
         $finish;
@@ -141,6 +161,8 @@ module axi4l_regs_tb ();
         .rd_regs                        (rd_regs),
         .wr_regs                        (wr_regs)
     );
+
+
 
 endmodule
 
