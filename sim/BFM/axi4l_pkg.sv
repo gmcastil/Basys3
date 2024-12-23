@@ -28,7 +28,7 @@ package axi4l_pkg;
             this.addr = addr;
             this.kind = kind;
             if (this.kind == AXI4L_WRITE) begin
-                this.data = data;
+                this.data = $random;
             end
         endfunction
 
@@ -53,7 +53,14 @@ package axi4l_pkg;
                $display("Read Resp: %s", resp.name());
                $display("Read Index: %d", this.index);
 
-           end
+            end else begin
+
+                $display("Write Addr: 0x%08h", this.addr);
+                $display("Write Datta: 0x%08h", this.data);
+                $display("Write Resp: %s", resp.name());
+
+            end
+
        endfunction
 
     endclass
@@ -112,7 +119,7 @@ package axi4l_pkg;
             // Total number of read transactions (used as index for read transaction results)
             static int rd_count = 0;
 
-            event araddr_done;
+            event raddr_done;
 
             if (this.vif.arstn == 1'b0) begin
                 $display("Read ignored while in reset");
@@ -124,40 +131,25 @@ package axi4l_pkg;
             // Background two processes, one to wait for the address phase to be complete and signal
             // to the other to wait for the data phase to be complete
             fork
-                // Wait until the read address handshake is complete and then fire an event
+                // Read address accepted phase
                 begin
-                    // Align to this clock edge
-                    @(this.vif.cb);
                     // Assert that we have a valid address and block until ready and valid are true
-                    this.vif.araddr <= rd_txn.addr;
-                    this.vif.arvalid <= 1'b1;
-                    // Align to this edge now, and drive the address to meaningless values
-                    @(this.vif.cb);
-
-                    wait (this.vif.arvalid && this.vif.arready);
-                    @(this.vif.cb);
-                    this.vif.araddr <= 'hX;
-                    this.vif.arvalid <= 1'b0;
-                    ->araddr_done;
+                    this.vif.araddr = rd_txn.addr;
+                    this.vif.arvalid = 1'b1;
+                    @(this.vif.cb.arready);
+                    this.vif.arvalid = 1'b0;
+                    ->raddr_done;
                 end
                 begin
                     // Once the event has fired, we can capture the data
-                    @araddr_done;
-                    // If the initiator is holding valid like they should, make sure we can actually
-                    // see it (TODO this might not be necessary and in reality, I might want to
-                    // truncate these so that I can send faster requests)
-                    repeat (2) @(this.vif.cb);
+                    @raddr_done;
 
-                    // Align to this clock edge
-                    @(this.vif.cb);
                     // Assert that we are ready for data and block until valid and ready are true
-                    this.vif.rready <= 1'b1;
-                    wait (this.vif.rvalid && this.vif.rready);
-                    rd_txn.data <= this.vif.rdata;
-                    rd_txn.resp <= axi4l_resp_t'(this.vif.rresp);
-
-                    @(this.vif.cb);
-                    this.vif.rready <= 1'b0;
+                    this.vif.rready = 1'b1;
+                    @(this.vif.cb.rvalid);
+                    rd_txn.data = this.vif.rdata;
+                    rd_txn.resp = axi4l_resp_t'(this.vif.rresp);
+                    this.vif.rready = 1'b0;
                 end
             // Require that both of these tasks complete before rejoining the main thread
             join
@@ -165,6 +157,53 @@ package axi4l_pkg;
             this.txn_history.push_back(rd_txn);
 
             sem_rd.put();
+        endtask
+
+        task write(axi4l_txn wr_txn);
+
+            // Total number of write transactions (used as index for write transaction results)
+            static int wr_count = 0;
+
+            bit wdata_done;
+            bit waddr_done;
+            event wr_done;
+
+            sem_wr.get();
+
+            fork
+                // Write address accepted phase
+                begin
+                    this.vif.awaddr = wr_txn.addr;
+                    this.vif.awvalid = 1'b1;
+                    @(this.vif.cb.awready);
+                    this.vif.awvalid = 1'b0;
+                    waddr_done = 1'b1; 
+                end
+                // Write data accepted phase
+                begin
+                    this.vif.wdata = wr_txn.data;
+                    this.vif.wvalid = 1'b1;
+                    this.vif.wstrb = 4'hF;
+                    @(this.vif.cb.wready);
+                    this.vif.wvalid = 1'b0;
+                    wdata_done = 1'b1;
+                end
+            // Wait for both phases to complete
+            join
+
+            wait(waddr_done && wdata_done);
+
+            // Response phase
+            this.vif.bready = 1'b1;
+            @(this.vif.cb.bvalid);
+            wr_txn.resp = axi4l_resp_t'(this.vif.cb.bresp);
+            this.vif.bready = 1'b0;
+
+            wr_txn.index = wr_count++;
+            this.txn_history.push_back(wr_txn);
+
+            sem_wr.put();
+
         endtask
 
         task monitor_reset();
