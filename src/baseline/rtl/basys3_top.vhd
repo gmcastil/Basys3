@@ -70,6 +70,24 @@ architecture structural of basys3_top is
     signal uart_rxd             : std_logic;
     signal uart_txd             : std_logic;
 
+    signal jtag_axi4l_awvalid   : std_logic;
+    signal jtag_axi4l_awready   : std_logic;
+    signal jtag_axi4l_awaddr    : std_logic_vector(31 downto 0);
+    signal jtag_axi4l_wvalid    : std_logic;
+    signal jtag_axi4l_wready    : std_logic;
+    signal jtag_axi4l_wdata     : std_logic_vector(31 downto 0);
+    signal jtag_axi4l_wstrb     : std_logic_vector(3 downto 0);
+    signal jtag_axi4l_bvalid    : std_logic;
+    signal jtag_axi4l_bready    : std_logic;
+    signal jtag_axi4l_bresp     : std_logic_vector(1 downto 0);
+    signal jtag_axi4l_arvalid   : std_logic;
+    signal jtag_axi4l_arready   : std_logic;
+    signal jtag_axi4l_araddr    : std_logic_vector(31 downto 0);
+    signal jtag_axi4l_rvalid    : std_logic;
+    signal jtag_axi4l_rready    : std_logic;
+    signal jtag_axi4l_rdata     : std_logic_vector(31 downto 0);
+    signal jtag_axi4l_rresp     : std_logic_vector(1 downto 0);
+
 begin
 
     -- IO ring
@@ -123,28 +141,39 @@ begin
     clk_100m00          <= sys_clk(0);
     rst_100m00          <= sys_rst(0);
 
-    -- UART core
-    uart_i0: entity work.uart
+    -- Top level UART with AXI4-Lite interface
+    uart_i0: entity work.uart_top
     generic map (
         DEVICE              => "7SERIES",
         CLK_FREQ            => 100000000,
-        BAUD_RATE           => 115200,
-        UART_MODE           => "LOOPBACK",
-        RX_FIFO_DO_REG      => UART_RX_FIFO_DO_REG,
-        TX_FIFO_DO_REG      => UART_TX_FIFO_DO_REG
+        BASE_OFFSET         => UART_BASE_OFFSET,
+        BASE_OFFSET_MASK    => UART_BASE_OFFSET_MASK,
+        DEBUG_UART_AXI      => false,
+        DEBUG_UART_CORE     => false
     )
     port map (
         clk                 => clk_100m00,
         rst                 => rst_100m00,
-        uart_ready          => uart_ready,
-        uart_rd_data        => uart_rd_data,
-        uart_rd_valid       => uart_rd_valid,
-        uart_rd_ready       => uart_rd_ready,
-        uart_wr_data        => uart_wr_data,
-        uart_wr_valid       => uart_wr_valid,
-        uart_wr_ready       => uart_wr_ready,
-        uart_rxd            => uart_rxd,
-        uart_txd            => uart_txd
+        axi4l_awvalid       => jtag_axi4l_awvalid,
+        axi4l_awready       => jtag_axi4l_awready,
+        axi4l_awaddr        => jtag_axi4l_awaddr,
+        axi4l_wvalid        => jtag_axi4l_wvalid,
+        axi4l_wready        => jtag_axi4l_wready,
+        axi4l_wdata         => jtag_axi4l_wdata,
+        axi4l_wstrb         => jtag_axi4l_wstrb,
+        axi4l_bvalid        => jtag_axi4l_bvalid,
+        axi4l_bready        => jtag_axi4l_bready,
+        axi4l_bresp         => jtag_axi4l_bresp,
+        axi4l_arvalid       => jtag_axi4l_arvalid,
+        axi4l_arready       => jtag_axi4l_arready,
+        axi4l_araddr        => jtag_axi4l_araddr,
+        axi4l_rvalid        => jtag_axi4l_rvalid,
+        axi4l_rready        => jtag_axi4l_rready,
+        axi4l_rdata         => jtag_axi4l_rdata,
+        axi4l_rresp         => jtag_axi4l_rresp,
+        irq                 => open,
+        rxd                 => uart_rxd,
+        txd                 => uart_txt
     );
 
     -- For now, all the LEDs will be routed to the user core
@@ -155,6 +184,31 @@ begin
     sseg_digit              <= (others=>'0');
     sseg_dp                 <= '0';
     sseg_selectn            <= (others=>'1');
+
+    jtag_uart_i0: entity work.jtag_uart
+    port map (
+        aclk                => clk_100m00,
+        aresetn             => ~rst_100m00,
+        m_axi_awaddr        => jtag_axi4l_awaddr,
+        m_axi_awprot        => open,
+        m_axi_awvalid       => jtag_axi4l_awvalid,
+        m_axi_awready       => jtag_axi4l_awready,
+        m_axi_wdata         => jtag_axi4l_wdata,
+        m_axi_wstrb         => jtag_axi4l_wstrb,
+        m_axi_wvalid        => jtag_axi4l_wvalid,
+        m_axi_wready        => jtag_axi4l_wready,
+        m_axi_bresp         => jtag_axi4l_bresp,
+        m_axi_bvalid        => jtag_axi4l_bvalid,
+        m_axi_bready        => jtag_axi4l_bready,
+        m_axi_araddr        => jtag_axi4l_araddr,
+        m_axi_arprot        => open,
+        m_axi_arvalid       => jtag_axi4l_arvalid,
+        m_axi_arready       => jtag_axi4l_arready,
+        m_axi_rdata         => jtag_axi4l_rdata,
+        m_axi_rresp         => jtag_axi4l_rresp,
+        m_axi_rvalid        => jtag_axi4l_rvalid,
+        m_axi_rready        => jtag_axi4l_rready
+    );
 
     -- User core
     user_core_i0: entity work.user_core
