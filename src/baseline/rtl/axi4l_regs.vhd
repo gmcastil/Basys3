@@ -58,9 +58,9 @@ architecture behavioral of axi4l_regs is
     --   - The AXI bridge should complete reads and writes successfully when the address is in the
     --     range acceptable to the slave.  If an access to a location is requested that we cannot
     --     service, then we indicate a DECERR Writes to read only locations are ignored.  Transactions
-    --     to unaligned addresses 
+    --     to unaligned addresses also yield a DECERR.
     --   - The AXI bridge should complete reads and writes but indicate errors in the response
-    --     when attempting to write a value that is not writeabled
+    --     when attempting to write a value that is not writeable.
     --   - All register access is handled in this module (i.e., if register access is made on the
     --     register interface, it is expected to complete)
     --   - Register access is centralized in this module because it already has to be done to
@@ -69,9 +69,10 @@ architecture behavioral of axi4l_regs is
     --   - Addresses get converted to unsigned internally so we can start using them to do math on
     --     like subtracting base addresses, shifting, etc. and then back to standard logic at the
     --     edges
-    --   - Addresses are unsigned values generally, except for the top level ports which are
-    --     std_logic_vector
-    --   - Tranaction and error counts increment at the end of a completed transaction
+    --   - Addresses are unsigned values generally, except for the top level interface port
+    --     std_logic_vector. This allows boundary base offset and range checking.
+    --   - Correct and incorrect (i.e., error) transaction counts are increments at the end of each
+    --     read or write transaction. No total counts are available, just good and bad.
 
     constant RESP_OKAY          : std_logic_vector(1 downto 0) := b"00";
     constant RESP_EXOKAY        : std_logic_vector(1 downto 0) := b"01";
@@ -124,21 +125,66 @@ begin
                 reg_wren            <= '0';
             else
 
-                -- Register the address from the AXI bus and mark ourselves as busy
-                if (s_axi_arvalid = '1' and s_axi_arready = '0' and rd_busy = '0') then
-                    -- If a write is not incoming, then we can start a read
-                    if (s_axi_awvalid = '0' or s_axi_wvalid = '0') then
-                        s_axi_arready       <= '1';
+                -- Because the register interface does not support concurrent read and write access,
+                -- but AXI does, an arbitration scheme is necessary. A naive approach would be to
+                -- use the write and ready busy flags as locked indicators. That has the problem of
+                -- a read and write arriving at the same time or a read transaction arriving between
+                -- the data and address portions of a write transaction.  An alternate approach
+                -- would be to create a combinatorial locked indicator based on the control signals,
+                -- which has obvious shortcomings as well.
+                --
+                -- The chosen method of arbitration operates by:
+                --   * Using the read and write buys signals to drive two independent state machines
+                --     which provide register access
+                --   * We decide which path to proceed along based on AXI valid signals
+                --
+                -- This creates an arbitration scheme with the following features:
+                --   * Write transactions are prioritized over read transactions.
+                --   * No fairness or scheduling mechanism is implemented; writes can monopolize the bus.
+                --   * Write transactions will only proceed when both the address and data are valid 
+                --     together. Address and data may still arrive at different times, but the write
+                --     transaction will not commence until both signals are valid concurrently.
+                --
+                if (wr_busy = '0' and rd_busy = '0') then
+                    -- We only proceed with a write when both write address and data are present
+                    -- together, so we mark ourselves busy now and the register all of the
+                    -- transaction details here
+                    if (s_axi_awvalid = '1' and s_axi_wvalid = '1') then
+                        wr_busy             <= '1';
+
+                        s_axi_awready       <= '1';
+                        s_axi_wready        <= '1';
+
                         -- Do not apply the base offset mask yet because we need to determine if we can
                         -- service the address on the wire first
-                        rd_addr             <= unsigned(s_axi_araddr);
+                        wr_addr             <= unsigned(s_axi_awaddr);
+                        reg_wdata           <= s_axi_wdata;
+                        reg_be              <= s_axi_wstrb;
+
+                    -- Otherwise a read can get through if it was provided at the same time, so we
+                    -- register those details and mark ourselves busy with a read
+                    elsif (s_axi_arvalid = '1' ) then
                         rd_busy             <= '1';
+
+                        s_axi_arready       <= '1';
+
+                        -- Again we register the entire address so that we can determine if its
+                        -- sericeable before we try to access it
+                        rd_addr             <= unsigned(s_axi_araddr);
                     end if;
-                else
+                end if;
+
+                -- We can use the two busy indicators as proxies for valid and ready being true
+                -- together, so we can deassert the ready signals based on that indicator
+                if (wr_busy = '1') then
+                    s_axi_awready       <= '0';
+                    s_axi_wready        <= '0';
+                end if;
+                if (rd_busy = '1') then
                     s_axi_arready       <= '0';
                 end if;
 
-                -- Have an AXI read transaction to process
+                -- Have an AXI read transaction with registered address to process
                 if (rd_busy = '1') then
                     -- AXI address is aligned and within the range servicable by the slave
                     if can_service(rd_addr) then
@@ -178,21 +224,7 @@ begin
                     end if;
                 end if;
 
-                -- Register the data and address from the bus and mark outselves as busy
-                if (s_axi_awvalid = '1' and s_axi_awready = '0' 
-                        and s_axi_wvalid = '1' and s_axi_wready = '0' and wr_busy = '0') then
-                    s_axi_awready       <= '1';
-                    s_axi_wready        <= '1';
-                    wr_addr             <= unsigned(s_axi_awaddr);
-                    reg_wdata           <= s_axi_wdata;
-                    reg_be              <= s_axi_wstrb;
-                    wr_busy             <= '1';
-                else
-                    s_axi_awready       <= '0';
-                    s_axi_wready        <= '0';
-                end if;
-
-                -- Have an AXI write transaction to process
+                -- Have an AXI write transaction with registered address, data, and strobes to process
                 if (wr_busy = '1') then
                     -- AXI address is aligned and within the range serviceable by the slave
                     if can_service(wr_addr) then
