@@ -104,6 +104,16 @@ module axi4l_regs_tb ();
             $display("Addr: 0x%08h Data: 0x%08h", rd_txn.addr, rd_txn.data);
         end
 
+        wr_txn = new(32'h80000000, AXI4L_WRITE);
+        rd_txn = new(32'h80000004, AXI4L_READ);
+        fork
+            begin
+                m_bfm.write(wr_txn);
+            end begin
+                m_bfm.read(rd_txn);
+            end
+        join
+
         $finish;
     end
 
