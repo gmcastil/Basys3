@@ -19,16 +19,10 @@ entity uart_core is
         rx_enable           : in    std_logic;
         tx_enable           : in    std_logic;
 
-        -- Defines expected parity to check on receive and sent on transmit
-        --  00 - Even
-        --  01 - Odd
-        --  1x - None
         parity              : in    std_logic_vector(1 downto 0);
-        -- Defines the number of bits to transmit or receive per character
-        --  00 - 6 bits
-        --  01 - 7 bits
-        --  1x - 8 bits
         char                : in    std_logic_vector(1 downto 0);
+        nbstop              : in    std_logic_vector(1 downto 0);
+
         -- Hardware flow control
         hw_flow_enable      : in    std_logic;
         hw_flow_rts         : out   std_logic;
@@ -61,9 +55,9 @@ architecture structural of uart_core is
 
 begin
 
-    -- Interrupt processing
-
     -- Baud rate generator
+
+    -- Interrupt processing
 
     -- RX FIFO
 

@@ -56,6 +56,13 @@ architecture structural of uart_top is
     constant NUM_REGS           := 16;
     constant REG_WRITE_MASK     := (others=>'0');
 
+    constant UART_CTRL_REG      := 0;
+    constant UART_MODE_REG      := 1;
+    constant UART_STATUS_REG    := 2;
+    constant UART_TXD_REG       := 3;
+    constant UART_RXD_REG       := 4;
+    constant UART_SCRATCH_REG   := 9;
+
     signal reg_addr             : unsigned(REG_ADDR_WIDTH-1 downto 0);
     signal reg_wdata            : std_logic_vector(31 downto 0);
     signal reg_wren             : std_logic;
@@ -68,7 +75,29 @@ architecture structural of uart_top is
     signal rd_regs              : reg_a(NUM_REGS-1 downto 0);
     signal wr_regs              : reg_a(NUM_REGS-1 downto 0);
 
+    -- Defines expected parity to check on receive and sent on transmit
+    --  00 - Even
+    --  01 - Odd
+    --  1x - None
+    signal parity               : std_logic_vector(1 downto 0);
+    -- Defines the number of bits to transmit or receive per character
+    --  00 - 6 bits
+    --  01 - 7 bits
+    --  1x - 8 bits
+    signal char                 : std_logic_vector(1 downto 0);
+    -- Defines the number of expected stop bits
+    --  00 - 1 stop bit
+    --  01 - 1.5 stop bits
+    --  1x - 2 stop bits
+    signal nbstop               : std_logic_vector(1 downto 0);
+
 begin
+
+    -- UART control and status bits are sliced and diced here into the
+    -- actual registers within the register block
+    parity      <= wr_regs(UART_MODE_REG)(7 downto 6);
+    char        <= wr_regs(UART_MODE_REG)(5 downto 4);
+    nbstop      <= wr_regs(UARG_MODE_REG)(3 downto 2);
 
     uart_core_i0: entity work.uart_core
     generic map (
@@ -79,23 +108,24 @@ begin
     port map (
         clk                 => clk,
         rst                 => rst,
-        rx_rst              => rx_rst,
-        tx_rst              => tx_rst,
-        rx_enable           => rx_enable,
-        tx_enable           => tx_enable,
+        rx_rst              => open,
+        tx_rst              => open,
+        rx_enable           => open,
+        tx_enable           => open,
         parity              => parity,
         char                => char,
-        hw_flow_enable      => hw_flow_enable,
-        hw_flow_rts         => hw_flow_rts,
-        hw_flow_cts         => hw_flow_cts,
-        baud_div            => baud_div,
-        baud_cnt            => baud_cnt,
-        irq_enable          => irq_enable,
-        irq_mask            => irq_mask,
-        irq_clear           => irq_clear,
-        irq_active          => irq_active,
-        rx_data             => rx_data,
-        tx_data             => tx_data,
+        nbstop              => nbstop,
+        hw_flow_enable      => open,
+        hw_flow_rts         => open,
+        hw_flow_cts         => open,
+        baud_div            => open,
+        baud_cnt            => open,
+        irq_enable          => open,
+        irq_mask            => open,
+        irq_clear           => open,
+        irq_active          => open,
+        rx_data             => open,
+        tx_data             => open,
         rxd                 => rxd,
         txd                 => txd
     );
