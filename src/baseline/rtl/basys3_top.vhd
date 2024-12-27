@@ -1,10 +1,13 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity basys3_top is
     generic (
         UART_RX_FIFO_DO_REG     : natural   := 0;
-        UART_TX_FIFO_DO_REG     : natural   := 0
+        UART_TX_FIFO_DO_REG     : natural   := 0;
+        UART_BASE_OFFSET        : unsigned(31 downto 0) := x"80000000";
+        UART_BASE_OFFSET_MASK   : unsigned(31 downto 0) := x"00000FFF"
     );
     port (
         -- 100MHz external clock
@@ -173,7 +176,7 @@ begin
         axi4l_rresp         => jtag_axi4l_rresp,
         irq                 => open,
         rxd                 => uart_rxd,
-        txd                 => uart_txt
+        txd                 => uart_txd
     );
 
     -- For now, all the LEDs will be routed to the user core
@@ -188,7 +191,7 @@ begin
     jtag_uart_i0: entity work.jtag_uart
     port map (
         aclk                => clk_100m00,
-        aresetn             => ~rst_100m00,
+        aresetn             => not rst_100m00,
         m_axi_awaddr        => jtag_axi4l_awaddr,
         m_axi_awprot        => open,
         m_axi_awvalid       => jtag_axi4l_awvalid,

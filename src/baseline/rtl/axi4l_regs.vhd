@@ -1,3 +1,31 @@
+-----------------------------------------------------------------------------
+--! @file       axi4l_regs.vhdl
+--! @brief      AXI4-Lite to register bank interface
+--! @author     George Castillo
+--! @date       24 December 2024
+--
+--! @details
+--
+
+    -- Design notes: - The AXI bridge should complete reads and writes successfully when the address is in the
+    --     range acceptable to the slave.  If an access to a location is requested that we cannot
+    --     service, then we indicate a DECERR Writes to read only locations are ignored.  Transactions
+    --     to unaligned addresses also yield a DECERR.
+    --   - The AXI bridge should complete reads and writes but indicate errors in the response
+    --     when attempting to write a value that is not writeable.
+    --   - All register access is handled in this module (i.e., if register access is made on the
+    --     register interface, it is expected to complete)
+    --   - Register access is centralized in this module because it already has to be done to
+    --     conform to the AXI spec and it register access in the internal register block, which makes
+    --     implementing it something like BRAM easier later
+    --   - Addresses get converted to unsigned internally so we can start using them to do math on
+    --     like subtracting base addresses, shifting, etc. and then back to standard logic at the
+    --     edges
+    --   - Addresses are unsigned values generally, except for the top level interface port
+    --     std_logic_vector. This allows boundary base offset and range checking.
+    --   - Correct and incorrect (i.e., error) transaction counts are increments at the end of each
+    --     read or write transaction. No total counts are available, just good and bad.
+-----------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.math_real.all;
@@ -13,10 +41,12 @@ entity axi4l_regs is
         REG_ADDR_WIDTH      : natural               := 4
     );
     port (
+        --! @brief All signals are assumed to be synchronous to the input clock
         clk                 : in  std_logic;
+        --! @brief Active low reset
         rstn                : in  std_logic;
 
-        -- AXI4-Lite slave interface
+        --! @brief AXI4-Lite slave interface
         s_axi_awaddr        : in  std_logic_vector(31 downto 0);
         s_axi_awvalid       : in  std_logic;
         s_axi_awready       : out std_logic;
@@ -39,7 +69,7 @@ entity axi4l_regs is
         s_axi_rvalid        : out std_logic;
         s_axi_rready        : in  std_logic;
 
-        -- Register interface
+        --! @brief Interface to register block. Note that all register signals are on the same domain.
         reg_addr            : out unsigned(REG_ADDR_WIDTH-1 downto 0);
         reg_wdata           : out std_logic_vector(31 downto 0);
         reg_wren            : out std_logic;
@@ -53,26 +83,6 @@ entity axi4l_regs is
 end entity axi4l_regs;
 
 architecture behavioral of axi4l_regs is
-
-    -- Design notes:
-    --   - The AXI bridge should complete reads and writes successfully when the address is in the
-    --     range acceptable to the slave.  If an access to a location is requested that we cannot
-    --     service, then we indicate a DECERR Writes to read only locations are ignored.  Transactions
-    --     to unaligned addresses also yield a DECERR.
-    --   - The AXI bridge should complete reads and writes but indicate errors in the response
-    --     when attempting to write a value that is not writeable.
-    --   - All register access is handled in this module (i.e., if register access is made on the
-    --     register interface, it is expected to complete)
-    --   - Register access is centralized in this module because it already has to be done to
-    --     conform to the AXI spec and it register access in the internal register block, which makes
-    --     implementing it something like BRAM easier later
-    --   - Addresses get converted to unsigned internally so we can start using them to do math on
-    --     like subtracting base addresses, shifting, etc. and then back to standard logic at the
-    --     edges
-    --   - Addresses are unsigned values generally, except for the top level interface port
-    --     std_logic_vector. This allows boundary base offset and range checking.
-    --   - Correct and incorrect (i.e., error) transaction counts are increments at the end of each
-    --     read or write transaction. No total counts are available, just good and bad.
 
     constant RESP_OKAY          : std_logic_vector(1 downto 0) := b"00";
     constant RESP_EXOKAY        : std_logic_vector(1 downto 0) := b"01";

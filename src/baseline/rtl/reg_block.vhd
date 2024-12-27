@@ -1,26 +1,16 @@
--- Define the package here for now
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
-package reg_types_pkg is
-
-    subtype reg_t is std_logic_vector(31 downto 0);
-    type reg_a is array (natural range<>) of reg_t;
-
-end package reg_types_pkg;
-
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.math_real.all;
 use ieee.numeric_std.all;
-use work.reg_types_pkg.all;
+
+use work.reg_pkg.all;
 
 entity reg_block is
     generic (
         REG_ADDR_WIDTH      : natural       := 4;
         NUM_REGS            : natural       := 16;
         -- Identifies which registers can be written to from the bus
-        REG_WRITE_MASK      : std_logic_vector(NUM_REGS-1 downto 0) := (others=>'0')
+        REG_WRITE_MASK      : std_logic_vector(15 downto 0) := (others=>'0')
     );
     port (
         clk                 : in  std_logic;
