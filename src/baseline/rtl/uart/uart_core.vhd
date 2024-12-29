@@ -29,8 +29,9 @@ entity uart_core is
         -- hw_flow_cts         : in    std_logic; 
 
         -- Baud clock generator signals
-        -- baud_div            : in    unsigned(11 downto 0);
-        -- baud_cnt            : out   unsigned(11 downto 0);
+        baud_div            : in    unsigned(14 downto 0);
+        baud_cnt            : out   unsigned(15 downto 0);
+        baud_gen_enable     : in    std_logic;
     
         -- Interrupt signals
         -- irq_enable          : in    std_logic_vector(31 downto 0);

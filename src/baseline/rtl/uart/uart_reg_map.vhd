@@ -1,0 +1,61 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+use work.reg_pkg.all;
+
+entity uart_reg_map is
+    generic (
+        NUM_REGS        : natural       := 16
+    );
+    port (
+        -- Input control/status signals
+        parity          : out std_logic_vector(1 downto 0);
+        nbstop          : out std_logic_vector(1 downto 0);
+        char            : out std_logic_vector(1 downto 0);
+
+        baud_div        : out unsigned(11 downto 0);
+        baud_cnt            : in   unsigned(11 downto 0);
+        baud_gen_enable     : out    std_logic;
+
+        -- Register interface
+        rd_regs         : out reg_a(NUM_REGS-1 downto 0);
+        wr_regs         : in  reg_a(NUM_REGS-1 downto 0)
+    );
+
+end entity uart_reg_map;
+
+architecture arch of uart_reg_map is
+
+begin
+
+    -- Register 0: UART control register (0x00000000)
+
+    -- Register 1: UART mode register (0x00000004)
+    -- Defines expected parity to check on receive and sent on transmit
+    --  00 - Even
+    --  01 - Odd
+    --  1x - None
+    --
+    --  Register 2: UART status register (0x00000008)
+    -- 
+
+    -- Defines the number of bits to transmit or receive per character
+    --  00 - 6 bits
+    --  01 - 7 bits
+    --  1x - 8 bits
+
+    -- Defines the number of expected stop bits
+    --  00 - 1 stop bit
+    --  01 - 1.5 stop bits
+    --  1x - 2 stop bits
+
+    -- Register 2: UART status register (0x00000008)
+    --
+    -- Register 8: Baud rate generator register (0x00000020)
+    --        0  Enable = 1, Disable = 0
+    --   15 - 1  15 bits for the baud_div
+
+    -- Register 9: UART scratch register (0x00000024)
+
+end architecture arch;

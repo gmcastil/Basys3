@@ -7,6 +7,7 @@ use work.reg_pkg.all;
 entity uart_top is
     generic (
         DEVICE              : string                := "7SERIES";
+        -- This will need to correspond to a clock frequency property in the device tree
         CLK_FREQ            : integer               := 100000000;
         BASE_OFFSET         : unsigned(31 downto 0) := (others=>'0');
         BASE_OFFSET_MASK    : unsigned(31 downto 0) := (others=>'0');
@@ -56,11 +57,7 @@ architecture structural of uart_top is
     constant NUM_REGS           : natural := 16;
     constant REG_WRITE_MASK     : std_logic_vector(NUM_REGS-1 downto 0) := b"0000_0010_0000_0010";
 
-    constant UART_CONTROL_REG   : natural := 0;
     constant UART_MODE_REG      : natural := 1;
-    constant UART_STATUS_REG    : natural := 2;
-    constant UART_TXD_REG       : natural := 3;
-    constant UART_RXD_REG       : natural := 4;
     constant UART_SCRATCH_REG   : natural := 9;
 
     signal reg_addr             : unsigned(REG_ADDR_WIDTH-1 downto 0);
@@ -75,29 +72,19 @@ architecture structural of uart_top is
     signal rd_regs              : reg_a(NUM_REGS-1 downto 0);
     signal wr_regs              : reg_a(NUM_REGS-1 downto 0);
 
-    -- Defines expected parity to check on receive and sent on transmit
-    --  00 - Even
-    --  01 - Odd
-    --  1x - None
     signal parity               : std_logic_vector(1 downto 0);
-    -- Defines the number of bits to transmit or receive per character
-    --  00 - 6 bits
-    --  01 - 7 bits
-    --  1x - 8 bits
     signal char                 : std_logic_vector(1 downto 0);
-    -- Defines the number of expected stop bits
-    --  00 - 1 stop bit
-    --  01 - 1.5 stop bits
-    --  1x - 2 stop bits
     signal nbstop               : std_logic_vector(1 downto 0);
 
-begin
+    signal baud_div             : unsigned(11 downto 0);
+    signal baud_cnt             : unsigned(11 downto 0);
+    signal baud_gen_enable      : std_logic;
 
-    -- UART control and status bits are sliced and diced here into the
-    -- actual registers within the register block
-    parity      <= wr_regs(UART_MODE_REG)(7 downto 6);
-    char        <= wr_regs(UART_MODE_REG)(5 downto 4);
-    nbstop      <= wr_regs(UART_MODE_REG)(3 downto 2);
+    attribute MARK_DEBUG                        : string;
+    attribute MARK_DEBUG of rd_regs              : signal is "TRUE";
+    attribute MARK_DEBUG of wr_regs              : signal is "TRUE";
+
+begin
 
     uart_core_i0: entity work.uart_core
     generic map (
@@ -108,26 +95,47 @@ begin
     port map (
         clk                 => clk,
         rst                 => rst,
-        -- rx_rst              => open,
-        -- tx_rst              => open,
-        -- rx_enable           => open,
-        -- tx_enable           => open,
         parity              => parity,
         char                => char,
         nbstop              => nbstop,
-        -- hw_flow_enable      => open,
-        -- hw_flow_rts         => open,
-        -- hw_flow_cts         => open,
-        -- baud_div            => open,
-        -- baud_cnt            => open,
-        -- irq_enable          => open,
-        -- irq_mask            => open,
-        -- irq_clear           => open,
-        -- irq_active          => open,
-        -- rx_data             => open,
-        -- tx_data             => open,
         rxd                 => rxd,
         txd                 => txd
+    );
+
+    uart_reg_map_i0: entity work.uart_reg_map
+    generic map (
+        NUM_REGS            => NUM_REGS
+    )
+    port map (
+        parity              => parity,
+        char                => char,
+        nbstop              => nbstop,
+        baud_div            => baud_div,
+        baud_cnt            => baud_cnt,
+        baud_gen_enable     => baud_gen_enable,
+        rd_regs             => rd_regs,
+        wr_regs             => wr_regs
+    );
+
+    uart_regs: entity work.reg_block
+    generic map (
+        REG_ADDR_WIDTH      => REG_ADDR_WIDTH,
+        NUM_REGS            => NUM_REGS,
+        REG_WRITE_MASK      => REG_WRITE_MASK
+    )
+    port map (
+        clk                 => clk,
+        rst                 => rst,
+        reg_addr            => reg_addr,
+        reg_wdata           => reg_wdata,
+        reg_wren            => reg_wren,
+        reg_be              => reg_be,
+        reg_rdata           => reg_rdata,
+        reg_req             => reg_req,
+        reg_ack             => reg_ack,
+        reg_err             => reg_err,
+        rd_regs             => rd_regs,
+        wr_regs             => wr_regs
     );
 
     axi4l_regs_i0: entity work.axi4l_regs
@@ -164,27 +172,6 @@ begin
         reg_req             => reg_req,
         reg_ack             => reg_ack,
         reg_err             => reg_err
-    );
-
-    uart_regs: entity work.reg_block
-    generic map (
-        REG_ADDR_WIDTH      => REG_ADDR_WIDTH,
-        NUM_REGS            => NUM_REGS,
-        REG_WRITE_MASK      => REG_WRITE_MASK
-    )
-    port map (
-        clk                 => clk,
-        rst                 => rst,
-        reg_addr            => reg_addr,
-        reg_wdata           => reg_wdata,
-        reg_wren            => reg_wren,
-        reg_be              => reg_be,
-        reg_rdata           => reg_rdata,
-        reg_req             => reg_req,
-        reg_ack             => reg_ack,
-        reg_err             => reg_err,
-        rd_regs             => rd_regs,
-        wr_regs             => wr_regs
     );
 
     uart_axi4l_ila: entity work.axi4l_ila
