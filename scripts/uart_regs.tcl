@@ -70,7 +70,7 @@ proc uart_read_reg {reg} {
 
     set rresp [get_property STATUS.RRESP "${jtag_axi_core}"]
     if {"${rresp}" != "OKAY"} {
-        error "rresp"
+        error "${rresp}"
     } else {
         # Vivado returns this implicitly as a hex value, so we prepend 0x to it
         return 0x[get_property DATA [get_hw_axi_txns rd_txn]]
