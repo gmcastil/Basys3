@@ -1,9 +1,13 @@
-# UART register definitions
+# Hardware location of UART
 set UART_OFFSET 0x80000000
-set UART_CONTROL_REG 0x00
-set UART_MODE_REG 0x004
-set UART_STATUS_REG 0x08
-set UART_SCRATCH_REG 0x24
+
+# Register numbers taken from the `uart_pkg.vhd` file
+set CTRL_REG 0
+set MODE_REG 1
+set STATUS_REG 2
+set BAUD_GEN_STATUS_REG 6
+set BAUD_GEN_CTRL_REG 7
+set SCRATCH_REG 15
 
 # Dump out the properties of a specific JTAG to AXI core
 proc display_hw_axi_properties {jtag_axi_core} {
@@ -18,8 +22,12 @@ proc display_hw_axi_properties {jtag_axi_core} {
 
 # Write a UART register and check the response. Returns nothing.
 proc uart_write_reg {reg val} {
+    # Do a bit of arithmetic to get the AXI address of the register from the
+    # register number and the AXI offset
     global UART_OFFSET
-    set wr_addr [expr { "${UART_OFFSET}" + "${reg}" }]
+    # Convert the register number to register offset
+    set reg_offset [expr { "${reg}" * 4 }]
+    set wr_addr [expr { "${UART_OFFSET}" + "${reg_offset}" }]
     # This extra format step is required because the command that creates the
     # hardware transaction assumes addresses are in a hexadecimal format
     set wr_addr [format 0x%x "${wr_addr}"]
@@ -48,8 +56,12 @@ proc uart_write_reg {reg val} {
 
 # Read a UART register and check the response. Returns 32-bit read value in hex.
 proc uart_read_reg {reg} {
+    # Do a bit of arithmetic to get the AXI address of the register from the
+    # register number and the AXI offset
     global UART_OFFSET
-    set rd_addr [expr { "${UART_OFFSET}" + "${reg}" }]
+    # Convert the register number to register offset
+    set reg_offset [expr { "${reg}" * 4 }]
+    set rd_addr [expr { "${UART_OFFSET}" + "${reg_offset}" }]
     # This extra format step is required because the command that creates the
     # hardware transaction assumes addresses are in a hexadecimal format
     set rd_addr [format 0x%x "${rd_addr}"]
@@ -83,10 +95,12 @@ display_hw_axi_properties "${jtag_axi_core}"
 
 # Check scratch register
 set wr_data 0x12341234
-uart_write_reg "${UART_SCRATCH_REG}" "${wr_data}"
-set rd_data [uart_read_reg "${UART_SCRATCH_REG}"]
+uart_write_reg "${SCRATCH_REG}" "${wr_data}"
+set rd_data [uart_read_reg "${SCRATCH_REG}"]
 if {"${wr_data}" != "${rd_data}"} {
     puts "Error: Failed to write scratch register. Expected ${wr_data} but received ${rd_data}"
+} else {
+    puts "Scratch register check successful"
 }
 
 
