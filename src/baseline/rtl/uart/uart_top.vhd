@@ -171,36 +171,39 @@ begin
         reg_err             => reg_err
     );
 
-    uart_axi4l_ila: entity work.axi4l_ila
-    port map (
-        clk                 => clk,
-        probe0(0)           => rst,
-        probe1(0)           => axi4l_awvalid,
-        probe2(0)           => axi4l_awready,
-        probe3              => axi4l_awaddr,
-        probe4(0)           => axi4l_wvalid,
-        probe5(0)           => axi4l_wready,
-        probe6              => axi4l_wdata,
-        probe7              => axi4l_wstrb,
-        probe8(0)           => axi4l_bvalid,
-        probe9(0)           => axi4l_bready,
-        probe10             => axi4l_bresp,
-        probe11(0)          => axi4l_arvalid,
-        probe12(0)          => axi4l_arready,
-        probe13             => axi4l_araddr,
-        probe14(0)          => axi4l_rvalid,
-        probe15(0)          => axi4l_rready,
-        probe16             => axi4l_rdata,
-        probe17             => axi4l_rresp,
-        probe18             => std_logic_vector(reg_addr),
-        probe19             => reg_wdata,
-        probe20(0)          => reg_wren,
-        probe21             => reg_be,
-        probe22             => reg_rdata,
-        probe23(0)          => reg_req,
-        probe24(0)          => reg_ack,
-        probe25(0)          => reg_err
-    );
+    -- Instrument the AXI interface and the internal register interface
+    g_uart_axi: if (DEBUG_UART_AXI) generate
+        uart_axi4l_ila: entity work.axi4l_ila
+        port map (
+            clk                 => clk,
+            probe0(0)           => rst,
+            probe1(0)           => axi4l_awvalid,
+            probe2(0)           => axi4l_awready,
+            probe3              => axi4l_awaddr,
+            probe4(0)           => axi4l_wvalid,
+            probe5(0)           => axi4l_wready,
+            probe6              => axi4l_wdata,
+            probe7              => axi4l_wstrb,
+            probe8(0)           => axi4l_bvalid,
+            probe9(0)           => axi4l_bready,
+            probe10             => axi4l_bresp,
+            probe11(0)          => axi4l_arvalid,
+            probe12(0)          => axi4l_arready,
+            probe13             => axi4l_araddr,
+            probe14(0)          => axi4l_rvalid,
+            probe15(0)          => axi4l_rready,
+            probe16             => axi4l_rdata,
+            probe17             => axi4l_rresp,
+            probe18             => std_logic_vector(reg_addr),
+            probe19             => reg_wdata,
+            probe20(0)          => reg_wren,
+            probe21             => reg_be,
+            probe22             => reg_rdata,
+            probe23(0)          => reg_req,
+            probe24(0)          => reg_ack,
+            probe25(0)          => reg_err
+        );
+    end generate g_uart_axi;
 
 end architecture structural;
 

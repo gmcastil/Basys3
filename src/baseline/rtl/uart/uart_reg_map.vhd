@@ -40,16 +40,17 @@ begin
     --  00 - Even
     --  01 - Odd
     --  1x - None
-    --
+    parity          <= wr_regs(MODE_REG)(9 downto 8);
     -- Defines the number of bits to transmit or receive per character
     --  00 - 6 bits
     --  01 - 7 bits
     --  1x - 8 bits
-
+    nbstop          <= wr_regs(MODE_REG)(5 downto 4);
     -- Defines the number of expected stop bits
     --  00 - 1 stop bit
     --  01 - 1.5 stop bits
     --  1x - 2 stop bits
+    char            <= wr_regs(MODE_REG)(1 downto 0); 
 
     -- Register 2: UART status register (0x00000008)
     --
