@@ -3,6 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.reg_pkg.all;
+use work.uart_pkg.all;
 
 entity uart_reg_map is
     generic (
@@ -40,9 +41,6 @@ begin
     --  01 - Odd
     --  1x - None
     --
-    --  Register 2: UART status register (0x00000008)
-    -- 
-
     -- Defines the number of bits to transmit or receive per character
     --  00 - 6 bits
     --  01 - 7 bits
@@ -56,18 +54,16 @@ begin
     -- Register 2: UART status register (0x00000008)
     --
     -- Register 6: Baud rate generator status
-    rd_regs(6)(31 downto 0)     <= (others=>'0');
-    rd_regs(6)(14 downto 0)     <= std_logic_vector(baud_cnt);
+    rd_regs(BAUD_GEN_STATUS_REG)(31 downto 0)     <= (others=>'0');
+    rd_regs(BAUD_GEN_STATUS_REG)(14 downto 0)     <= std_logic_vector(baud_cnt);
 
     -- Register 7: Baud rate generator register (0x00000020)
     --          0  Enable = 1, Disable = 0
     --    15 -  1  15 bits for the baud_div
     --    31 - 16  Unused
-    baud_div        <= unsigned(wr_regs(7)(15 downto 1));
-    baud_gen_en     <= wr_regs(7)(0);
+    baud_div        <= unsigned(wr_regs(BAUD_GEN_CTRL_REG)(15 downto 1));
+    baud_gen_en     <= wr_regs(BAUD_GEN_CTRL_REG)(0);
 
-    -- Register 9: UART scratch register (0x00000024)
-
-    
+    -- Register 15: UART scratch register (0x000000??)
 
 end architecture arch;
