@@ -204,5 +204,23 @@ begin
         );
     end generate g_axi_ila;
 
+    -- Instrument the control and status bits at the UART core. This
+    -- is intended for driver debug not for general hardware debug.
+    -- Generate a different core for that or use MARK_DEBUG attributes
+    -- and a post-synthesis ILA.
+    g_regs_ila: if (DEBUG_UART_CORE) generate
+        uart_core_ila_i0: entity work.uart_core_ila
+        port map (
+            clk                 => clk,
+            probe0(0)           => rst,
+            probe1              => parity,
+            probe2              => char,
+            probe3              => nbstop,
+            probe4              => baud_div,
+            probe5              => baud_cnt,
+            probe6(0)           => baud_gen_en
+        );
+    end generate g_regs_ila;
+
 end architecture structural;
 
