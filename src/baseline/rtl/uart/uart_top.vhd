@@ -12,7 +12,9 @@ entity uart_top is
         CLK_FREQ            : integer               := 100000000;
         BASE_OFFSET         : unsigned(31 downto 0) := (others=>'0');
         BASE_OFFSET_MASK    : unsigned(31 downto 0) := (others=>'0');
+        -- Instrument the AXI and register interfaces in an ILA core
         DEBUG_UART_AXI      : boolean               := false;
+        -- Instrument the control and status bits at the UART core in an ILA
         DEBUG_UART_CORE     : boolean               := false
     );
     port (
@@ -73,10 +75,6 @@ architecture structural of uart_top is
     signal baud_div             : unsigned(14 downto 0);
     signal baud_cnt             : unsigned(14 downto 0);
     signal baud_gen_en          : std_logic;
-
-    -- attribute MARK_DEBUG                        : string;
-    -- attribute MARK_DEBUG of rd_regs              : signal is "TRUE";
-    -- attribute MARK_DEBUG of wr_regs              : signal is "TRUE";
 
 begin
 
@@ -172,7 +170,8 @@ begin
     );
 
     -- Instrument the AXI interface and the internal register interface
-    g_uart_axi: if (DEBUG_UART_AXI) generate
+    -- TODO Write and reference a Tcl script that will create this IP
+    g_axi_ila: if (DEBUG_UART_AXI) generate
         uart_axi4l_ila: entity work.axi4l_ila
         port map (
             clk                 => clk,
@@ -203,7 +202,7 @@ begin
             probe24(0)          => reg_ack,
             probe25(0)          => reg_err
         );
-    end generate g_uart_axi;
+    end generate g_axi_ila;
 
 end architecture structural;
 

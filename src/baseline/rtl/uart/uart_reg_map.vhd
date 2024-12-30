@@ -28,9 +28,6 @@ end entity uart_reg_map;
 
 architecture arch of uart_reg_map is
 
-    attribute MARK_DEBUG    : string;
-    attribute MARK_DEBUG of baud_cnt        : signal is "TRUE";
-
 begin
 
     -- Register 0: UART control register (0x00000000)
