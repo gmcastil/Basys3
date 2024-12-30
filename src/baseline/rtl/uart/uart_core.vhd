@@ -30,8 +30,8 @@ entity uart_core is
 
         -- Baud clock generator signals
         baud_div            : in    unsigned(14 downto 0);
-        baud_cnt            : out   unsigned(15 downto 0);
-        baud_gen_enable     : in    std_logic;
+        baud_cnt            : out   unsigned(14 downto 0);
+        baud_gen_en         : in    std_logic;
     
         -- Interrupt signals
         -- irq_enable          : in    std_logic_vector(31 downto 0);
@@ -54,11 +54,23 @@ end entity uart_core;
 
 architecture structural of uart_core is
 
+    signal baud_tick        : std_logic;
+
 begin
 
     txd     <= rxd;
 
     -- Baud rate generator
+    baud_rate_gen_i0: entity work.baud_rate_gen
+    port map (
+        clk             => clk,
+        rst             => rst,
+        baud_gen_en     => baud_gen_en,
+        baud_div        => baud_div,
+        baud_cnt        => baud_cnt,
+        baud_tick       => baud_tick
+    );
+
 
     -- Interrupt processing
 

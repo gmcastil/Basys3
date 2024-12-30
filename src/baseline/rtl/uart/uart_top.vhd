@@ -55,10 +55,7 @@ architecture structural of uart_top is
 
     constant REG_ADDR_WIDTH     : natural := 4;
     constant NUM_REGS           : natural := 16;
-    constant REG_WRITE_MASK     : std_logic_vector(NUM_REGS-1 downto 0) := b"0000_0010_0000_0010";
-
-    constant UART_MODE_REG      : natural := 1;
-    constant UART_SCRATCH_REG   : natural := 9;
+    constant REG_WRITE_MASK     : std_logic_vector(NUM_REGS-1 downto 0) := b"0000_0010_1000_0000";
 
     signal reg_addr             : unsigned(REG_ADDR_WIDTH-1 downto 0);
     signal reg_wdata            : std_logic_vector(31 downto 0);
@@ -76,13 +73,13 @@ architecture structural of uart_top is
     signal char                 : std_logic_vector(1 downto 0);
     signal nbstop               : std_logic_vector(1 downto 0);
 
-    signal baud_div             : unsigned(11 downto 0);
-    signal baud_cnt             : unsigned(11 downto 0);
-    signal baud_gen_enable      : std_logic;
+    signal baud_div             : unsigned(14 downto 0);
+    signal baud_cnt             : unsigned(14 downto 0);
+    signal baud_gen_en          : std_logic;
 
-    attribute MARK_DEBUG                        : string;
-    attribute MARK_DEBUG of rd_regs              : signal is "TRUE";
-    attribute MARK_DEBUG of wr_regs              : signal is "TRUE";
+    -- attribute MARK_DEBUG                        : string;
+    -- attribute MARK_DEBUG of rd_regs              : signal is "TRUE";
+    -- attribute MARK_DEBUG of wr_regs              : signal is "TRUE";
 
 begin
 
@@ -98,6 +95,9 @@ begin
         parity              => parity,
         char                => char,
         nbstop              => nbstop,
+        baud_div            => baud_div,
+        baud_cnt            => baud_cnt,
+        baud_gen_en         => baud_gen_en,
         rxd                 => rxd,
         txd                 => txd
     );
@@ -112,7 +112,7 @@ begin
         nbstop              => nbstop,
         baud_div            => baud_div,
         baud_cnt            => baud_cnt,
-        baud_gen_enable     => baud_gen_enable,
+        baud_gen_en         => baud_gen_en,
         rd_regs             => rd_regs,
         wr_regs             => wr_regs
     );
@@ -174,36 +174,36 @@ begin
         reg_err             => reg_err
     );
 
-    uart_axi4l_ila: entity work.axi4l_ila
-    port map (
-        clk                 => clk,
-        probe0(0)           => rst,
-        probe1(0)           => axi4l_awvalid,
-        probe2(0)           => axi4l_awready,
-        probe3              => axi4l_awaddr,
-        probe4(0)           => axi4l_wvalid,
-        probe5(0)           => axi4l_wready,
-        probe6              => axi4l_wdata,
-        probe7              => axi4l_wstrb,
-        probe8(0)           => axi4l_bvalid,
-        probe9(0)           => axi4l_bready,
-        probe10             => axi4l_bresp,
-        probe11(0)          => axi4l_arvalid,
-        probe12(0)          => axi4l_arready,
-        probe13             => axi4l_araddr,
-        probe14(0)          => axi4l_rvalid,
-        probe15(0)          => axi4l_rready,
-        probe16             => axi4l_rdata,
-        probe17             => axi4l_rresp,
-        probe18             => std_logic_vector(reg_addr),
-        probe19             => reg_wdata,
-        probe20(0)          => reg_wren,
-        probe21             => reg_be,
-        probe22             => reg_rdata,
-        probe23(0)          => reg_req,
-        probe24(0)          => reg_ack,
-        probe25(0)          => reg_err
-    );
+    -- uart_axi4l_ila: entity work.axi4l_ila
+    -- port map (
+    --     clk                 => clk,
+    --     probe0(0)           => rst,
+    --     probe1(0)           => axi4l_awvalid,
+    --     probe2(0)           => axi4l_awready,
+    --     probe3              => axi4l_awaddr,
+    --     probe4(0)           => axi4l_wvalid,
+    --     probe5(0)           => axi4l_wready,
+    --     probe6              => axi4l_wdata,
+    --     probe7              => axi4l_wstrb,
+    --     probe8(0)           => axi4l_bvalid,
+    --     probe9(0)           => axi4l_bready,
+    --     probe10             => axi4l_bresp,
+    --     probe11(0)          => axi4l_arvalid,
+    --     probe12(0)          => axi4l_arready,
+    --     probe13             => axi4l_araddr,
+    --     probe14(0)          => axi4l_rvalid,
+    --     probe15(0)          => axi4l_rready,
+    --     probe16             => axi4l_rdata,
+    --     probe17             => axi4l_rresp,
+    --     probe18             => std_logic_vector(reg_addr),
+    --     probe19             => reg_wdata,
+    --     probe20(0)          => reg_wren,
+    --     probe21             => reg_be,
+    --     probe22             => reg_rdata,
+    --     probe23(0)          => reg_req,
+    --     probe24(0)          => reg_ack,
+    --     probe25(0)          => reg_err
+    -- );
 
 end architecture structural;
 

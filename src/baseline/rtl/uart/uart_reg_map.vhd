@@ -14,9 +14,9 @@ entity uart_reg_map is
         nbstop          : out std_logic_vector(1 downto 0);
         char            : out std_logic_vector(1 downto 0);
 
-        baud_div        : out unsigned(11 downto 0);
-        baud_cnt            : in   unsigned(11 downto 0);
-        baud_gen_enable     : out    std_logic;
+        baud_div        : out unsigned(14 downto 0);
+        baud_cnt        : in  unsigned(14 downto 0);
+        baud_gen_en     : out std_logic;
 
         -- Register interface
         rd_regs         : out reg_a(NUM_REGS-1 downto 0);
@@ -26,6 +26,9 @@ entity uart_reg_map is
 end entity uart_reg_map;
 
 architecture arch of uart_reg_map is
+
+    attribute MARK_DEBUG    : string;
+    attribute MARK_DEBUG of baud_cnt        : signal is "TRUE";
 
 begin
 
@@ -52,10 +55,19 @@ begin
 
     -- Register 2: UART status register (0x00000008)
     --
-    -- Register 8: Baud rate generator register (0x00000020)
-    --        0  Enable = 1, Disable = 0
-    --   15 - 1  15 bits for the baud_div
+    -- Register 6: Baud rate generator status
+    rd_regs(6)(31 downto 0)     <= (others=>'0');
+    rd_regs(6)(14 downto 0)     <= std_logic_vector(baud_cnt);
+
+    -- Register 7: Baud rate generator register (0x00000020)
+    --          0  Enable = 1, Disable = 0
+    --    15 -  1  15 bits for the baud_div
+    --    31 - 16  Unused
+    baud_div        <= unsigned(wr_regs(7)(15 downto 1));
+    baud_gen_en     <= wr_regs(7)(0);
 
     -- Register 9: UART scratch register (0x00000024)
+
+    
 
 end architecture arch;
