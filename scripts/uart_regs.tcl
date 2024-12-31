@@ -5,6 +5,7 @@ set UART_OFFSET 0x80000000
 set CTRL_REG 0
 set MODE_REG 1
 set STATUS_REG 2
+set CONFIG_REG 3
 set BAUD_GEN_STATUS_REG 6
 set BAUD_GEN_CTRL_REG 7
 set SCRATCH_REG 15
@@ -103,4 +104,13 @@ if {"${wr_data}" != "${rd_data}"} {
     puts "Scratch register check successful"
 }
 
+set wr_data 0xffffffff
+uart_write_reg "${BAUD_GEN_CTRL_REG}" "${wr_data}"
+set rd_data [uart_read_reg "${BAUD_GEN_STATUS_REG}"]
+puts "READ: ${rd_data}"
+set rd_data [uart_read_reg "${BAUD_GEN_STATUS_REG}"]
+puts "READ: ${rd_data}"
 
+puts "Reading build configuration"
+set rd_data [uart_read_reg "${CONFIG_REG}"]
+puts "READ: ${rd_data}"

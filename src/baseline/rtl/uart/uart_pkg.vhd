@@ -14,6 +14,7 @@ package uart_pkg is
     constant CTRL_REG               : natural := 0;
     constant MODE_REG               : natural := 1;
     constant STATUS_REG             : natural := 2;
+    constant CONFIG_REG             : natural := 3;
     constant BAUD_GEN_STATUS_REG    : natural := 6;
     constant BAUD_GEN_CTRL_REG      : natural := 7;
     constant SCRATCH_REG            : natural := 15;

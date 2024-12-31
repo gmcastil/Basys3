@@ -5,19 +5,18 @@ use ieee.numeric_std.all;
 entity uart_core is
     generic (
         DEVICE              : string            := "7SERIES";
-        CLK_FREQ            : integer           := 100000000;
-        DEBUG               : boolean           := false
+        RX_ENABLE           : boolean           := true;
+        TX_ENABLE           : boolean           := true
     );
     port (
         clk                 : in    std_logic;
         rst                 : in    std_logic;
 
-        -- Reset the entire RX or TX data path
-        -- rx_rst              : in    std_logic;
-        -- tx_rst              : in    std_logic;
-        -- -- Enable or disable the RX or TX data path
-        -- rx_enable           : in    std_logic;
-        -- tx_enable           : in    std_logic;
+        -- UART RX and TX control
+        rx_rst              : in    std_logic;
+        rx_en               : in    std_logic;
+        tx_rst              : in    std_logic;
+        tx_en               : in    std_logic;
 
         parity              : in    std_logic_vector(1 downto 0);
         char                : in    std_logic_vector(1 downto 0);

@@ -5,12 +5,12 @@
 | `0x00`  | Control              | Enables/disables UART and resets it.                      |
 | `0x04`  | Mode                 | Sets baud rate, data bits, parity, etc.                   |
 | `0x08`  | Status               | Indicates TX/RX readiness and error conditions.           |
-| `0x0C`  |
+| `0x0C`  | Config               | Indicates UART build configuration |
 | `0x10`  |
 | `0x14`  |
 | `0x18`  |
 | `0x1C`  |
-| `0x20`  |
+| `0x20`  | Baud Rate Gen
 | `0x24`  | Scratch              | Scratch register for 
 
 

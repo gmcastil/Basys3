@@ -12,6 +12,9 @@ entity uart_top is
         CLK_FREQ            : integer               := 100000000;
         BASE_OFFSET         : unsigned(31 downto 0) := (others=>'0');
         BASE_OFFSET_MASK    : unsigned(31 downto 0) := (others=>'0');
+        -- When set to false, the RX or TX hardware is not instantiated and will be bypassed
+        RX_ENABLE           : boolean               := true;
+        TX_ENABLE           : boolean               := true;
         -- Instrument the AXI and register interfaces in an ILA core
         DEBUG_UART_AXI      : boolean               := false;
         -- Instrument the control and status bits at the UART core in an ILA
@@ -68,6 +71,11 @@ architecture structural of uart_top is
     signal rd_regs              : reg_a(NUM_REGS-1 downto 0);
     signal wr_regs              : reg_a(NUM_REGS-1 downto 0);
 
+	signal rx_rst			    : std_logic;
+	signal tx_rst			    : std_logic;
+	signal rx_en			    : std_logic;
+	signal tx_en			    : std_logic;
+
     signal parity               : std_logic_vector(1 downto 0);
     signal char                 : std_logic_vector(1 downto 0);
     signal nbstop               : std_logic_vector(1 downto 0);
@@ -81,12 +89,16 @@ begin
     uart_core_i0: entity work.uart_core
     generic map (
         DEVICE              => DEVICE,
-        CLK_FREQ            => CLK_FREQ,
-        DEBUG               => DEBUG_UART_CORE
+        RX_ENABLE           => RX_ENABLE,
+        TX_ENABLE           => TX_ENABLE
     )
     port map (
         clk                 => clk,
         rst                 => rst,
+        rx_rst              => rx_rst,
+        rx_en               => rx_en,
+        tx_rst              => tx_rst,
+        tx_en               => tx_en,
         parity              => parity,
         char                => char,
         nbstop              => nbstop,
@@ -99,9 +111,17 @@ begin
 
     uart_reg_map_i0: entity work.uart_reg_map
     generic map (
-        NUM_REGS            => NUM_REGS
+        NUM_REGS            => NUM_REGS,
+        RX_ENABLE           => RX_ENABLE,
+        TX_ENABLE           => TX_ENABLE,
+        DEBUG_UART_AXI      => DEBUG_UART_AXI, 
+        DEBUG_UART_CORE     => DEBUG_UART_CORE
     )
     port map (
+        rx_rst              => rx_rst,
+        rx_en               => rx_en,
+        tx_rst              => tx_rst,
+        tx_en               => tx_en,
         parity              => parity,
         char                => char,
         nbstop              => nbstop,
@@ -213,12 +233,16 @@ begin
         port map (
             clk                 => clk,
             probe0(0)           => rst,
-            probe1              => parity,
-            probe2              => char,
-            probe3              => nbstop,
-            probe4              => baud_div,
-            probe5              => baud_cnt,
-            probe6(0)           => baud_gen_en
+            probe1(0)           => rx_rst,
+            probe2(0)           => rx_en,
+            probe3(0)           => tx_rst,
+            probe4(0)           => tx_en,
+            probe5              => parity,
+            probe6              => char,
+            probe7              => nbstop,
+            probe8              => baud_div,
+            probe9              => baud_cnt,
+            probe10(0)          => baud_gen_en
         );
     end generate g_regs_ila;
 
