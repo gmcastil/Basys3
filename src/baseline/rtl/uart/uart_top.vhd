@@ -190,9 +190,8 @@ begin
     );
 
     -- Instrument the AXI interface and the internal register interface
-    -- TODO Write and reference a Tcl script that will create this IP
     g_axi_ila: if (DEBUG_UART_AXI) generate
-        uart_axi4l_ila: entity work.axi4l_ila
+        uart_axi4l_ila_i0: entity work.uart_axi4l_ila
         port map (
             clk                 => clk,
             probe0(0)           => rst,
@@ -240,8 +239,8 @@ begin
             probe5              => parity,
             probe6              => char,
             probe7              => nbstop,
-            probe8              => baud_div,
-            probe9              => baud_cnt,
+            probe8              => std_logic_vector(baud_div),
+            probe9              => std_logic_vector(baud_cnt),
             probe10(0)          => baud_gen_en
         );
     end generate g_regs_ila;

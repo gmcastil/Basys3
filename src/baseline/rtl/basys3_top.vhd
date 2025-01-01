@@ -7,7 +7,9 @@ entity basys3_top is
         UART_RX_FIFO_DO_REG     : natural   := 0;
         UART_TX_FIFO_DO_REG     : natural   := 0;
         UART_BASE_OFFSET        : unsigned(31 downto 0) := x"80000000";
-        UART_BASE_OFFSET_MASK   : unsigned(31 downto 0) := x"00000FFF"
+        UART_BASE_OFFSET_MASK   : unsigned(31 downto 0) := x"00000FFF";
+        DEBUG_UART_AXI          : boolean   := false;
+        DEBUG_UART_CORE         : boolean   := false
     );
     port (
         -- 100MHz external clock
@@ -151,8 +153,8 @@ begin
         CLK_FREQ            => 100000000,
         BASE_OFFSET         => UART_BASE_OFFSET,
         BASE_OFFSET_MASK    => UART_BASE_OFFSET_MASK,
-        DEBUG_UART_AXI      => false,
-        DEBUG_UART_CORE     => false
+        DEBUG_UART_AXI      => DEBUG_UART_AXI,
+        DEBUG_UART_CORE     => DEBUG_UART_CORE
     )
     port map (
         clk                 => clk_100m00,
