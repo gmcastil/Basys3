@@ -28,7 +28,7 @@ set_property \
             CONFIG.ALL_PROBE_SAME_MU    {true} \
             CONFIG.C_DATA_DEPTH         {1024} \
             CONFIG.C_INPUT_PIPE_STAGES  {0} \
-            CONFIG.C_NUM_OF_PROBES      {11} \
+            CONFIG.C_NUM_OF_PROBES      {13} \
             CONFIG.C_PROBE0_WIDTH       {1} \
             CONFIG.C_PROBE1_WIDTH       {1} \
             CONFIG.C_PROBE2_WIDTH       {1} \
@@ -40,6 +40,8 @@ set_property \
             CONFIG.C_PROBE8_WIDTH       {15} \
             CONFIG.C_PROBE9_WIDTH       {15} \
             CONFIG.C_PROBE10_WIDTH      {1} \
+            CONFIG.C_PROBE11_WIDTH      {32} \
+            CONFIG.C_PROBE12_WIDTH      {32} \
             ] [get_ips "${ip_name}"]
 
 # Find the XCI file to use for instantiation

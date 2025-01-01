@@ -80,6 +80,9 @@ architecture structural of uart_top is
     signal char                 : std_logic_vector(1 downto 0);
     signal nbstop               : std_logic_vector(1 downto 0);
 
+    signal cfg                  : std_logic_vector(31 downto 0);
+    signal scratch              : std_logic_vector(31 downto 0);
+
     signal baud_div             : unsigned(14 downto 0);
     signal baud_cnt             : unsigned(14 downto 0);
     signal baud_gen_en          : std_logic;
@@ -122,12 +125,17 @@ begin
         rx_en               => rx_en,
         tx_rst              => tx_rst,
         tx_en               => tx_en,
+        -- Control
+        -- Mode
         parity              => parity,
         char                => char,
         nbstop              => nbstop,
+        -- Config
+        cfg                 => cfg,
         baud_div            => baud_div,
         baud_cnt            => baud_cnt,
         baud_gen_en         => baud_gen_en,
+        scratch             => scratch,
         rd_regs             => rd_regs,
         wr_regs             => wr_regs
     );
@@ -241,7 +249,9 @@ begin
             probe7              => nbstop,
             probe8              => std_logic_vector(baud_div),
             probe9              => std_logic_vector(baud_cnt),
-            probe10(0)          => baud_gen_en
+            probe10(0)          => baud_gen_en,
+            probe11             => cfg,
+            probe12             => scratch
         );
     end generate g_regs_ila;
 

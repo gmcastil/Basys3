@@ -16,14 +16,17 @@ entity uart_reg_map is
     );
     port (
 
-        rx_rst              : out    std_logic;
-        rx_en               : out    std_logic;
-        tx_rst              : out    std_logic;
-        tx_en               : out    std_logic;
+        rx_rst              : out std_logic;
+        rx_en               : out std_logic;
+        tx_rst              : out std_logic;
+        tx_en               : out std_logic;
 
         parity              : out std_logic_vector(1 downto 0);
         nbstop              : out std_logic_vector(1 downto 0);
         char                : out std_logic_vector(1 downto 0);
+
+        cfg                 : out std_logic_vector(31 downto 0);
+        scratch             : out std_logic_vector(31 downto 0);
 
         baud_div            : out unsigned(14 downto 0);
         baud_cnt            : in  unsigned(14 downto 0);
@@ -39,23 +42,30 @@ architecture arch of uart_reg_map is
 
 begin
 
+    -- The config register isn't actually used anywhere in the hardware, but it
+    -- still needs to be exported so it appears in the top level debug ILA
+    cfg         <= std_logic_vector(rd_regs(CONFIG_REG)); 
+    -- Same story with the scratch register
+    scratch     <= std_logic_vector(wr_regs(SCRATCH_REG));
+
     -- Register 0: UART control register
 
     -- Register 1: UART mode register
+    
     -- Defines expected parity to check on receive and sent on transmit
     --  00 - Even
     --  01 - Odd
     --  1x - None
     parity          <= wr_regs(MODE_REG)(9 downto 8);
-    -- Defines the number of bits to transmit or receive per character
-    --  00 - 6 bits
-    --  01 - 7 bits
-    --  1x - 8 bits
-    nbstop          <= wr_regs(MODE_REG)(5 downto 4);
     -- Defines the number of expected stop bits
     --  00 - 1 stop bit
     --  01 - 1.5 stop bits
     --  1x - 2 stop bits
+    nbstop          <= wr_regs(MODE_REG)(5 downto 4);
+    -- Defines the number of bits to transmit or receive per character
+    --  00 - 6 bits
+    --  01 - 7 bits
+    --  1x - 8 bits
     char            <= wr_regs(MODE_REG)(1 downto 0); 
 
     -- Register 2: UART status register
