@@ -38,10 +38,15 @@ entity uart_core is
         -- irq_clear           : in    std_logic_vector(31 downto 0);
         -- irq_active          : out   std_logic_vector(31 downto 0);
 
+        -- TX FIFO signals
+    --        tx_fifo_full        : out   std_logic;
+
         -- RX and TX data ports are fixed at 8-bits, regardless of character size. For 6 or 7-bit
         -- characters, the unnecessary bits can be ignored or masked out
         -- rx_data             : out   std_logic_vector(7 downto 0);
-        -- tx_data             : in    std_logic_vector(7 downto 0);
+        tx_data             : in    std_logic_vector(7 downto 0);
+        tx_data_valid       : in    std_logic;
+        tx_data_ready       : out   std_logic;
 
         -- Serial input ports (should map to a pad or an IBUF / OBUF)
         rxd                 : in    std_logic;
@@ -57,8 +62,6 @@ architecture structural of uart_core is
 
 begin
 
-    txd     <= rxd;
-
     -- Baud rate generator
     baud_rate_gen_i0: entity work.baud_rate_gen
     port map (
@@ -70,15 +73,14 @@ begin
         baud_tick       => baud_tick
     );
 
-
     -- Interrupt processing
 
     -- RX FIFO
 
     -- TX FIFO
 
+
     -- UART RX
 
-    -- UART TX
 
 end architecture structural;
