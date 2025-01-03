@@ -7,9 +7,9 @@ use work.uart_pkg.all;
 
 entity uart_top is
     generic (
+        -- Required for device or platform specific features (e.g., FIFO primitives)
         DEVICE              : string                := "7SERIES";
-        -- This will need to correspond to a clock frequency property in the device tree
-        CLK_FREQ            : integer               := 100000000;
+        -- Define the location and size of UART in memory map
         BASE_OFFSET         : unsigned(31 downto 0) := (others=>'0');
         BASE_OFFSET_MASK    : unsigned(31 downto 0) := (others=>'0');
         -- When set to false, the RX or TX hardware is not instantiated and will be bypassed
@@ -17,8 +17,8 @@ entity uart_top is
         TX_ENABLE           : boolean               := true;
         -- Instrument the AXI and register interfaces in an ILA core
         DEBUG_UART_AXI      : boolean               := false;
-        -- Instrument the control and status bits at the UART core in an ILA
-        DEBUG_UART_CORE     : boolean               := false
+        -- Instrument UART control and status signals
+        DEBUG_UART_CTRL     : boolean               := false
     );
     port (
         clk                 : in    std_logic;
@@ -68,9 +68,6 @@ architecture structural of uart_top is
     signal reg_ack              : std_logic;
     signal reg_err              : std_logic;
 
-    signal rd_regs              : reg_a(NUM_REGS-1 downto 0);
-    signal wr_regs              : reg_a(NUM_REGS-1 downto 0);
-
 	signal rx_rst			    : std_logic;
 	signal tx_rst			    : std_logic;
 	signal rx_en			    : std_logic;
@@ -112,53 +109,16 @@ begin
         txd                 => txd
     );
 
-    uart_reg_map_i0: entity work.uart_reg_map
+    uart_ctrl_i0: entity work.uart_ctrl
     generic map (
-        NUM_REGS            => NUM_REGS,
+
         RX_ENABLE           => RX_ENABLE,
         TX_ENABLE           => TX_ENABLE,
-        DEBUG_UART_AXI      => DEBUG_UART_AXI, 
-        DEBUG_UART_CORE     => DEBUG_UART_CORE
+        DEBUG_UART_AXI      => DEBUG_UART_AXI,
+        DEBUG_UART_CTRL     => DEBUG_UART_CTRL
     )
     port map (
-        rx_rst              => rx_rst,
-        rx_en               => rx_en,
-        tx_rst              => tx_rst,
-        tx_en               => tx_en,
-        -- Control
-        -- Mode
-        parity              => parity,
-        char                => char,
-        nbstop              => nbstop,
-        -- Config
-        cfg                 => cfg,
-        baud_div            => baud_div,
-        baud_cnt            => baud_cnt,
-        baud_gen_en         => baud_gen_en,
-        scratch             => scratch,
-        rd_regs             => rd_regs,
-        wr_regs             => wr_regs
-    );
 
-    uart_regs: entity work.reg_block
-    generic map (
-        REG_ADDR_WIDTH      => REG_ADDR_WIDTH,
-        NUM_REGS            => NUM_REGS,
-        REG_WRITE_MASK      => REG_WRITE_MASK
-    )
-    port map (
-        clk                 => clk,
-        rst                 => rst,
-        reg_addr            => reg_addr,
-        reg_wdata           => reg_wdata,
-        reg_wren            => reg_wren,
-        reg_be              => reg_be,
-        reg_rdata           => reg_rdata,
-        reg_req             => reg_req,
-        reg_ack             => reg_ack,
-        reg_err             => reg_err,
-        rd_regs             => rd_regs,
-        wr_regs             => wr_regs
     );
 
     axi4l_regs_i0: entity work.axi4l_regs
@@ -230,30 +190,6 @@ begin
             probe25(0)          => reg_err
         );
     end generate g_axi_ila;
-
-    -- Instrument the control and status bits at the UART core. This
-    -- is intended for driver debug not for general hardware debug.
-    -- Generate a different core for that or use MARK_DEBUG attributes
-    -- and a post-synthesis ILA.
-    g_regs_ila: if (DEBUG_UART_CORE) generate
-        uart_core_ila_i0: entity work.uart_core_ila
-        port map (
-            clk                 => clk,
-            probe0(0)           => rst,
-            probe1(0)           => rx_rst,
-            probe2(0)           => rx_en,
-            probe3(0)           => tx_rst,
-            probe4(0)           => tx_en,
-            probe5              => parity,
-            probe6              => char,
-            probe7              => nbstop,
-            probe8              => std_logic_vector(baud_div),
-            probe9              => std_logic_vector(baud_cnt),
-            probe10(0)          => baud_gen_en,
-            probe11             => cfg,
-            probe12             => scratch
-        );
-    end generate g_regs_ila;
 
 end architecture structural;
 
