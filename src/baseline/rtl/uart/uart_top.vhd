@@ -111,14 +111,32 @@ begin
 
     uart_ctrl_i0: entity work.uart_ctrl
     generic map (
-
         RX_ENABLE           => RX_ENABLE,
         TX_ENABLE           => TX_ENABLE,
         DEBUG_UART_AXI      => DEBUG_UART_AXI,
         DEBUG_UART_CTRL     => DEBUG_UART_CTRL
     )
     port map (
-
+        clk                 => clk,
+        rst                 => rst,
+        reg_addr            => reg_addr,
+        reg_wdata           => reg_wdata,
+        reg_wren            => reg_wren,
+        reg_be              => reg_be,
+        reg_rdata           => reg_rdata,
+        reg_req             => reg_req,
+        reg_ack             => reg_ack,
+        reg_err             => reg_err,
+        rx_rst              => rx_rst,
+        rx_en               => rx_en,
+        tx_rst              => tx_rst,
+        tx_en               => tx_en,
+        parity              => parity,
+        char                => char,
+        nbstop              => nbstop,
+        baud_div            => baud_div,
+        baud_cnt            => baud_cnt,
+        baud_gen_en         => baud_gen_en
     );
 
     axi4l_regs_i0: entity work.axi4l_regs
@@ -158,7 +176,7 @@ begin
     );
 
     -- Instrument the AXI interface and the internal register interface
-    g_axi_ila: if (DEBUG_UART_AXI) generate
+    g_axi_dbg: if (DEBUG_UART_AXI) generate
         uart_axi4l_ila_i0: entity work.uart_axi4l_ila
         port map (
             clk                 => clk,
@@ -189,7 +207,7 @@ begin
             probe24(0)          => reg_ack,
             probe25(0)          => reg_err
         );
-    end generate g_axi_ila;
+    end generate g_axi_dbg;
 
 end architecture structural;
 

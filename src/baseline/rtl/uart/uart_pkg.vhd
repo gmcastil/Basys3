@@ -9,7 +9,7 @@ package uart_pkg is
     -- Number of registers exposed
     constant NUM_REGS           : natural := 16;
     -- Mask to determine which registers are externally writable or only readable
-    constant REG_WRITE_MASK     : std_logic_vector(NUM_REGS-1 downto 0) := b"1000_0000_1000_0000";
+    constant REG_WRITE_MASK     : std_logic_vector(NUM_REGS-1 downto 0) := b"1000_0000_1000_0011";
 
     constant CTRL_REG               : natural := 0;
     constant MODE_REG               : natural := 1;
