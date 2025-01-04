@@ -73,7 +73,7 @@ architecture structural of uart_top is
 	signal rx_en			    : std_logic;
 	signal tx_en			    : std_logic;
 
-    signal parity               : std_logic_vector(1 downto 0);
+    signal parity               : std_logic_vector(2 downto 0);
     signal char                 : std_logic_vector(1 downto 0);
     signal nbstop               : std_logic_vector(1 downto 0);
 

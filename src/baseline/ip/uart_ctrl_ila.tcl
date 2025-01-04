@@ -34,7 +34,7 @@ set_property \
             CONFIG.C_PROBE2_WIDTH       {1} \
             CONFIG.C_PROBE3_WIDTH       {1} \
             CONFIG.C_PROBE4_WIDTH       {1} \
-            CONFIG.C_PROBE5_WIDTH       {2} \
+            CONFIG.C_PROBE5_WIDTH       {3} \
             CONFIG.C_PROBE6_WIDTH       {2} \
             CONFIG.C_PROBE7_WIDTH       {2} \
             CONFIG.C_PROBE8_WIDTH       {15} \

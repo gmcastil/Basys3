@@ -35,12 +35,9 @@ entity uart_ctrl is
         tx_rst              : out std_logic;
         tx_en               : out std_logic;
 
-        parity              : out std_logic_vector(1 downto 0);
+        parity              : out std_logic_vector(2 downto 0);
         nbstop              : out std_logic_vector(1 downto 0);
         char                : out std_logic_vector(1 downto 0);
-
-        cfg                 : out std_logic_vector(31 downto 0);
-        scratch             : out std_logic_vector(31 downto 0);
 
         baud_div            : out unsigned(14 downto 0);
         baud_cnt            : in  unsigned(14 downto 0);
@@ -49,7 +46,7 @@ entity uart_ctrl is
 
 end entity uart_ctrl;
 
-architecture rtl of uart_regs is
+architecture rtl of uart_ctrl is
 
     signal rd_regs              : reg_a(NUM_REGS-1 downto 0);
     signal wr_regs              : reg_a(NUM_REGS-1 downto 0);
@@ -60,7 +57,7 @@ architecture rtl of uart_regs is
 begin
 
     -- The config register isn't actually used anywhere in the hardware, but it
-    -- still needs to be exported so it appears in the top level debug ILA
+    -- still gets created and assigned in the control core ILA.
     cfg         <= std_logic_vector(rd_regs(CONFIG_REG)); 
 
     -- Register 0: UART control register
@@ -68,10 +65,12 @@ begin
     -- Register 1: UART mode register
     
     -- Defines expected parity to check on receive and sent on transmit
-    --  00 - Even
-    --  01 - Odd
-    --  1x - None
-    parity          <= wr_regs(MODE_REG)(9 downto 8);
+    --  000 - Even
+    --  001 - Odd
+    --  01x - None
+    --  100 - Forced even
+    --  110 - Forced odd
+    parity          <= wr_regs(MODE_REG)(10 downto 8);
     -- Defines the number of expected stop bits
     --  00 - 1 stop bit
     --  01 - 1.5 stop bits
@@ -90,7 +89,7 @@ begin
     rd_regs(CONFIG_REG)(23 downto 16)           <= (others=>'0');
     rd_regs(CONFIG_REG)(15 downto 10)           <= (others=>'0');
     rd_regs(CONFIG_REG)(9)                      <= '1' when DEBUG_UART_AXI else '0';
-    rd_regs(CONFIG_REG)(8)                      <= '1' when DEBUG_UART_CORE else '0';
+    rd_regs(CONFIG_REG)(8)                      <= '1' when DEBUG_UART_CTRL else '0';
     rd_regs(CONFIG_REG)(7 downto 5)             <= (others=>'0');
     rd_regs(CONFIG_REG)(4)                      <= '1' when TX_ENABLE else '0';
     rd_regs(CONFIG_REG)(3 downto 1)             <= (others=>'0');

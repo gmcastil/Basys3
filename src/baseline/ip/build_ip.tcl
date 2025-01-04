@@ -2,7 +2,7 @@
 
 # Identify the location that IP will be placed when completed
 
-set ip_dir "ip"
+set ip_dir "output_products"
 set part "xc7a35tcpg236-1"
 
 # Not sure of the use case for IP yet, it's possible that future uses will want
@@ -18,7 +18,7 @@ if {! [file isdirectory "${ip_dir}"]} {
     file mkdir "${ip_dir}"
 }
 
-set build_ip_names {"uart_core_ila" "uart_axi4l_ila"}
+set build_ip_names {"uart_ctrl_ila" "uart_axi4l_ila"}
 
 foreach ip_name "${build_ip_names}" {
     set ip_build_file "${ip_name}.tcl"
