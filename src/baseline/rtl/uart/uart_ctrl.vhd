@@ -42,6 +42,10 @@ entity uart_ctrl is
         baud_div            : out unsigned(14 downto 0);
         baud_cnt            : in  unsigned(14 downto 0);
         baud_gen_en         : out std_logic
+
+        tx_data             : out std_logic_vector(7 downto 0);
+        tx_data_valid       : out std_logic;
+        tx_data_ready       : in  std_logic;
     );
 
 end entity uart_ctrl;

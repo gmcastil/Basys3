@@ -4,24 +4,25 @@ use ieee.numeric_std.all;
 
 entity uart_tx is
     generic (
-        -- Target device
-        DEVICE          : string    := "7SERIES";
-        -- FIFO size
-        FIFO_SIZE       : string    := "18Kb";
-        -- Enable additional FIFO pipeline stage
-        DO_REG          : integer   := 1 
-    );
+        DEVICE              : string            := "7SERIES"
+    )
     port (
         clk             : in    std_logic;
         rst             : in    std_logic;
 
+        tx_en           : in    std_logic;
+
         -- Baud rate tick from baud rate generator
         baud_tick       : in    std_logic;
 
-        -- UART TX write interface
-        wr_data         : in    std_logic_vector(7 downto 0);
-        wr_valid        : in    std_logic;
-        wr_ready        : out   std_logic;
+        parity          : in    std_logic_vector(1 downto 0);
+        nbstop          : in    std_logic_vector(1 downto 0);
+        char            : in    std_logic_vector(1 downto 0);
+
+        -- UART TX data interface
+        tx_data         : in    std_logic_vector(7 downto 0);
+        tx_valid        : in    std_logic;
+        tx_ready        : out   std_logic;
 
         -- Number of frames sent since the last reset
         tx_frame_cnt    : out   unsigned(31 downto 0);
@@ -35,11 +36,8 @@ end entity uart_tx;
 
 architecture behavioral of uart_tx is
 
-    -- Just support 1 start bit, 8 data bits, no parity, and 1 stop bit for now
-    constant TX_FRAME_LEN           : integer := 10;
-
-    constant TX_START_BIT           : std_logic := '0';
-    constant TX_STOP_BIT            : std_logic := '1';
+    -- Enable the FIFO output stage register
+    constant DO_REG                 : natural   := 1;
 
     -- Transmission data register (TDR)
     signal  tx_data_sr              : std_logic_vector((TX_FRAME_LEN - 1) downto 0);
@@ -149,64 +147,27 @@ begin
         end if;
     end process;
 
-    -- Write to the FIFO when we are not in reset, the producer has valid data, the FIFO is not
-    -- full, and the FIFO is not in reset.
-    p_fifo_write: process(clk)
-    begin
-        if rising_edge(clk) then
-            if (rst = '1') then
-                wr_ready            <= '0';
-                tx_fifo_wr_en       <= '0';
-            else
-                if (wr_valid = '1' and tx_fifo_full = '0' and tx_fifo_ready = '1') then
-                    wr_ready            <= '1';
-                    tx_fifo_wr_en       <= '1';
 
-                    tx_fifo_wr_data     <= wr_data;
-                else
-                    wr_ready            <= '0';
-                    tx_fifo_wr_en       <= '0';
-                end if;
-            end if;
-        end if;
-    end process p_fifo_write;
-
-    fifo_tx_i0: entity work.fifo_sync
-    generic map (
-        DEVICE          => DEVICE,
-        FIFO_WIDTH      => 8,
-        FIFO_SIZE       => "18Kb",
-        FWFT            => false,
-        DO_REG          => DO_REG,
-        DEBUG           => false
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        wr_en           => tx_fifo_wr_en,
-        wr_data         => tx_fifo_wr_data,
-        rd_en           => tx_fifo_rd_en,
-        rd_data         => tx_fifo_rd_data,
-        ready           => tx_fifo_ready,
-        full            => tx_fifo_full,
-        empty           => tx_fifo_empty
-    );
-
-    skid_buffer_tx: entity work.skid_buffer
-    generic map (
-        DATA_WIDTH      => 8,
-        DO_REG          => DO_REG
-    )
-    port map (
-        clk             => clk,
-        rst             => rst,
-        fifo_rd_data    => tx_fifo_rd_data,
-        fifo_rd_en      => tx_fifo_rd_en,
-        fifo_empty      => tx_fifo_empty,
-        fifo_ready      => tx_fifo_ready,
-        rd_data         => tx_data,
-        rd_valid        => tx_valid,
-        rd_ready        => tx_ready
-    );
 end architecture behavioral;
 
+    -- -- Write to the FIFO when we are not in reset, the producer has valid data, the FIFO is not
+    -- -- full, and the FIFO is not in reset.
+    -- p_fifo_write: process(clk)
+    -- begin
+    --     if rising_edge(clk) then
+    --         if (rst = '1') then
+    --             wr_ready            <= '0';
+    --             tx_fifo_wr_en       <= '0';
+    --         else
+    --             if (wr_valid = '1' and tx_fifo_full = '0' and tx_fifo_ready = '1') then
+    --                 wr_ready            <= '1';
+    --                 tx_fifo_wr_en       <= '1';
+
+    --                 tx_fifo_wr_data     <= wr_data;
+    --             else
+    --                 wr_ready            <= '0';
+    --                 tx_fifo_wr_en       <= '0';
+    --             end if;
+    --         end if;
+    --     end if;
+    -- end process p_fifo_write;

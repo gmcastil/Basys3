@@ -68,10 +68,10 @@ architecture structural of uart_top is
     signal reg_ack              : std_logic;
     signal reg_err              : std_logic;
 
-	signal rx_rst			    : std_logic;
-	signal tx_rst			    : std_logic;
-	signal rx_en			    : std_logic;
-	signal tx_en			    : std_logic;
+    signal rx_rst               : std_logic;
+    signal tx_rst               : std_logic;
+    signal rx_en                : std_logic;
+    signal tx_en                : std_logic;
 
     signal parity               : std_logic_vector(2 downto 0);
     signal char                 : std_logic_vector(1 downto 0);
@@ -83,6 +83,10 @@ architecture structural of uart_top is
     signal baud_div             : unsigned(14 downto 0);
     signal baud_cnt             : unsigned(14 downto 0);
     signal baud_gen_en          : std_logic;
+
+    signal tx_data              : std_logic_vector(7 downto 0);
+    signal tx_data_valid        : std_logic;
+    signal tx_data_ready        : std_logic;
 
 begin
 
@@ -105,6 +109,9 @@ begin
         baud_div            => baud_div,
         baud_cnt            => baud_cnt,
         baud_gen_en         => baud_gen_en,
+        tx_data             => tx_data,
+        tx_data_valid       => tx_data_valid,
+        tx_data_ready       => tx_data_ready,
         rxd                 => rxd,
         txd                 => txd
     );
@@ -136,7 +143,10 @@ begin
         nbstop              => nbstop,
         baud_div            => baud_div,
         baud_cnt            => baud_cnt,
-        baud_gen_en         => baud_gen_en
+        baud_gen_en         => baud_gen_en,
+        tx_data             => tx_data,
+        tx_data_valid       => tx_data_valid,
+        tx_data_ready       => tx_data_ready
     );
 
     axi4l_regs_i0: entity work.axi4l_regs

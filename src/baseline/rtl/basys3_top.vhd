@@ -8,8 +8,10 @@ entity basys3_top is
         UART_TX_FIFO_DO_REG     : natural   := 0;
         UART_BASE_OFFSET        : unsigned(31 downto 0) := x"80000000";
         UART_BASE_OFFSET_MASK   : unsigned(31 downto 0) := x"00000FFF";
+        UART_RX_ENABLE          : boolean   := true;
+        UART_TX_ENABLE          : boolean   := true;
         DEBUG_UART_AXI          : boolean   := false;
-        DEBUG_UART_CORE         : boolean   := false
+        DEBUG_UART_CTRL         : boolean   := false
     );
     port (
         -- 100MHz external clock
@@ -150,11 +152,12 @@ begin
     uart_i0: entity work.uart_top
     generic map (
         DEVICE              => "7SERIES",
-        CLK_FREQ            => 100000000,
         BASE_OFFSET         => UART_BASE_OFFSET,
         BASE_OFFSET_MASK    => UART_BASE_OFFSET_MASK,
+        RX_ENABLE           => UART_RX_ENABLE,
+        TX_ENABLE           => UART_TX_ENABLE,
         DEBUG_UART_AXI      => DEBUG_UART_AXI,
-        DEBUG_UART_CORE     => DEBUG_UART_CORE
+        DEBUG_UART_CTRL     => DEBUG_UART_CTRL
     )
     port map (
         clk                 => clk_100m00,

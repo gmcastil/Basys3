@@ -18,7 +18,7 @@ entity uart_core is
         tx_rst              : in    std_logic;
         tx_en               : in    std_logic;
 
-        parity              : in    std_logic_vector(1 downto 0);
+        parity              : in    std_logic_vector(2 downto 0);
         char                : in    std_logic_vector(1 downto 0);
         nbstop              : in    std_logic_vector(1 downto 0);
 
@@ -37,9 +37,6 @@ entity uart_core is
         -- irq_mask            : in    std_logic_vector(31 downto 0);
         -- irq_clear           : in    std_logic_vector(31 downto 0);
         -- irq_active          : out   std_logic_vector(31 downto 0);
-
-        -- TX FIFO signals
-    --        tx_fifo_full        : out   std_logic;
 
         -- RX and TX data ports are fixed at 8-bits, regardless of character size. For 6 or 7-bit
         -- characters, the unnecessary bits can be ignored or masked out
@@ -60,6 +57,14 @@ architecture structural of uart_core is
 
     signal baud_tick        : std_logic;
 
+    -- Prevent undesired optimization in the baud tick generator -
+    -- during early integration, since it was unconnected to anything
+    -- else, the tick output was being driven by the output of a CARRY4
+    -- and more combinatorial logic. Once its connected to the rest of
+    -- the design, this should be unnecessary.
+    attribute DONT_TOUCH    : string;
+    attribute DONT_TOUCH of baud_rate_gen_i0: label is "TRUE";
+
 begin
 
     -- Baud rate generator
@@ -75,12 +80,16 @@ begin
 
     -- Interrupt processing
 
-    -- RX FIFO
-
-    -- TX FIFO
-
-
     -- UART RX
 
+    -- UART TX
+    uart_tx_i0: entity work.uart_tx
+    port map (
+        clk             => clk,
+        rst             => rst,
+        tx_data         => tx_data,
+        tx_data_valid   => tx_data_valid,
+        tx_data_ready   => tx_data_ready
+     );
 
 end architecture structural;
